@@ -1,4 +1,16 @@
-# kicad-pcb-text
+# clone
+
+Replicate-layout kept making a mess, so I wrote my own plugin to do replication
+of subcicruits from hierarchical sheets in my own simpler way.
+
+ 0. Install plugin, if not done already.
+
+ 1. Select stuff to replicate.
+
+ 2. Run plugin.
+
+
+# text
 
 Formats the refs and values on their own layers and the way I want.
 
@@ -13,10 +25,9 @@ Formats the refs and values on their own layers and the way I want.
 
 # Weekly rant about Python
 
-There's no configuration dialog to edit the formatting rules, because I can't be
+There's no configuration dialog to edit the plugin config, because I can't be
 arsed wasting time fighting with the disappointing mess that is text-format
-(e.g. YAML/JSON/XML) serialisation in Python, combined with 3rd-party dependency
-issues relating to how Kicad provides its own Python environment.
-
-C# in 2010 was far better at it than Python is in 2022...
-Hell, even Java beats Python in this area.
+(e.g. YAML/JSON/XML) serialisation in Python, combined with 3rd-party
+dependency issues relating to how Kicad provides its own Python environment.
+GUI development in Python is also a stone-age pain in the arse compared to the
+likes of Delphi or C# 10-20 years ago.

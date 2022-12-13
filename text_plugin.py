@@ -1,6 +1,6 @@
 import pcbnew
 
-from .mark_text import Plugin, PluginConfiguration
+from .text import Plugin, PluginConfiguration
 
 
 class MoveTextToDedicatedLayers(pcbnew.ActionPlugin):
