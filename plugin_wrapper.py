@@ -2,17 +2,20 @@ from typing import Generic, final
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, asdict
 import logging
+import sys
+import os.path
 
 import pcbnew  # pyright: ignore
 
-from .plugin import Plugin, PluginInitParams, ConfigurationType
+from .configuration import ConfigurationType, ConfigurationInitParams
+from .plugin import Plugin, PluginInitParams
 from .plugin_metadata import PluginMetadata
 
 
 class PluginWrapper(pcbnew.ActionPlugin, Generic[ConfigurationType]):
 
 	@abstractmethod
-	def create_configuration(self) -> ConfigurationType:
+	def create_configuration(self, init_params: ConfigurationInitParams) -> ConfigurationType:
 		pass
 
 	@abstractmethod
@@ -33,25 +36,44 @@ class PluginWrapper(pcbnew.ActionPlugin, Generic[ConfigurationType]):
 		self.icon = metadata.icon
 		self.show_toolbar_button = metadata.show_toolbar_button
 
+	def init_log_sink(self, path: str):
+		for handler in logging.root.handlers[:]:
+			logging.root.removeHandler(handler)
+		logging.basicConfig(level=logging.DEBUG,
+			filename=os.path.join(path, f"plugin-{self.__class__.__name__}.log"),
+			filemode="w",
+			format="%(asctime)s %(name)s %(lineno)d:%(message)s",
+			datefmt="%Y-%m-%d %H:%M:%S"
+		)
+
 	@final
 	def Run(self) -> None:
-		logger = logging.Logger("mark_plugin_wrapper")
+
+		logger = logging.getLogger(self.__class__.__name__)
 
 		try:
 
 			logger.info("Getting board")
 			board = pcbnew.GetBoard()
+			filename = os.path.abspath(board.GetFileName())
+
+			logger.info("Initialising log sinks")
+			self.init_log_sink(os.path.dirname(filename))
+
+			logger.info("Platform: %s", sys.platform)
+			logger.info("Python version: %s", sys.version)
+			logger.info("KiCad build version: %s" + pcbnew.GetBuildVersion())
+
+			logger.info("Filename: %s", filename)
+			logger.info("Metadata: %s", asdict(self.get_metadata()))
 
 			logger.info("Creating configuration")
-			configuration = self.create_configuration()
+			configuration = self.create_configuration(ConfigurationInitParams(logger=logger))
 
-			logger.info("Filename: %s", board.GetFileName())
-			logger.info("Metadata: %s", asdict(self.get_metadata()))
 			logger.info("Configuration: %s", asdict(configuration))
 
 			logger.info("Creating plugin instance")
-			init_params = PluginInitParams(board=board, configuration=configuration, logger=logger)
-			plugin = self.create_plugin(init_params)
+			plugin = self.create_plugin(PluginInitParams(logger=logger, board=board, configuration=configuration))
 
 			logger.info("Plugin: %s", plugin.__class__.__name__)
 
@@ -66,6 +88,8 @@ class PluginWrapper(pcbnew.ActionPlugin, Generic[ConfigurationType]):
 		except Exception as error:
 
 			logger.exception(error)
+
+			raise
 
 		finally:
 

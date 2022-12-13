@@ -5,7 +5,7 @@ from .text import TextPlugin, TextPluginConfiguration
 
 class TextPluginWrapper(PluginWrapper[TextPluginConfiguration]):
 
-	def create_configuration(self):
+	def create_configuration(self, init_params):
 		return TextPluginConfiguration()
 
 	def create_plugin(self, init_params):

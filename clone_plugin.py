@@ -5,7 +5,7 @@ from .clone import ClonePlugin, ClonePluginConfiguration
 
 class ClonePluginWrapper(PluginWrapper[ClonePluginConfiguration]):
 
-	def create_configuration(self):
+	def create_configuration(self, init_params):
 		return ClonePluginConfiguration()
 
 	def create_plugin(self, init_params):
