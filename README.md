@@ -1,4 +1,4 @@
-# kiacd-pcb-text
+# kicad-pcb-text
 
 Formats the refs and values on their own layers and the way I want.
 
