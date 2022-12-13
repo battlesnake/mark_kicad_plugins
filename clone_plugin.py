@@ -1,23 +1,22 @@
-import pcbnew
-
-from .clone import Plugin, PluginConfiguration
-
-
-class CloneSubcircuitAcrossSheetInstances(pcbnew.ActionPlugin):
-
-	def defaults(self):
-		self.name = "Clone subcircuit across sheet instances"
-		self.category = "Modify PCB"
-		self.description = "Clones the selected subcircuit footprint relative positions, tracks, vias across to other instances of the sheet containing it"
-		self.icon = "psygen.png"
-		self.show_toolbar_button = True
-
-	def Run(self):
-		board = pcbnew.GetBoard()
-		configuration = PluginConfiguration()
-		plugin = Plugin(board, configuration)
-		plugin.execute()
-		pcbnew.Refresh()
+from .plugin_wrapper import PluginWrapper
+from .plugin_metadata import PluginMetadata
+from .clone import ClonePlugin, ClonePluginConfiguration
 
 
-CloneSubcircuitAcrossSheetInstances().register()
+class ClonePluginWrapper(PluginWrapper[ClonePluginConfiguration]):
+
+	def create_configuration(self):
+		return ClonePluginConfiguration()
+
+	def create_plugin(self, init_params):
+		return ClonePlugin(init_params)
+
+	@staticmethod
+	def get_metadata():
+		return PluginMetadata(
+			name="Clone subcircuit across sheet instances",
+			description="Clones the selected subcircuit footprint relative positions, tracks, vias across to other instances of the sheet containing it",
+		)
+
+
+ClonePluginWrapper().register()

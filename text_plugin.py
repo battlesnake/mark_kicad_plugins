@@ -1,23 +1,22 @@
-import pcbnew
-
-from .text import Plugin, PluginConfiguration
-
-
-class MoveTextToDedicatedLayers(pcbnew.ActionPlugin):
-
-	def defaults(self):
-		self.name = "Text to dedicated layers"
-		self.category = "Modify PCB"
-		self.description = "Assign references and values to dedicated layers (which must be created beforehand: Refs, Values)"
-		self.icon = "psygen.png"
-		self.show_toolbar_button = True
-
-	def Run(self):
-		board = pcbnew.GetBoard()
-		configuration = PluginConfiguration()
-		plugin = Plugin(board, configuration)
-		plugin.execute()
-		pcbnew.Refresh()
+from .plugin_wrapper import PluginWrapper
+from .plugin_metadata import PluginMetadata
+from .text import TextPlugin, TextPluginConfiguration
 
 
-MoveTextToDedicatedLayers().register()
+class TextPluginWrapper(PluginWrapper[TextPluginConfiguration]):
+
+	def create_configuration(self):
+		return TextPluginConfiguration()
+
+	def create_plugin(self, init_params):
+		return TextPlugin(init_params)
+
+	@staticmethod
+	def get_metadata():
+		return PluginMetadata(
+			name="Text to dedicated layers",
+			description="Assign references and values to dedicated layers (which must be created beforehand: Refs, Values)",
+		)
+
+
+TextPluginWrapper().register()

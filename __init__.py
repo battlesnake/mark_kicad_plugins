@@ -1,2 +1,2 @@
-from .mark_text_plugin import MoveTextToDedicatedLayers
-from .mark_clone_plugin import CloneSubcircuitAcrossSheetInstances
+from .text_plugin import TextPluginWrapper
+from .clone_plugin import ClonePluginWrapper

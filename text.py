@@ -1,56 +1,13 @@
 from dataclasses import dataclass
-from enum import Enum
 import functools
 
-import pcbnew
+import pcbnew  # pyright: ignore
 
+from .point import Point
+from .linear_interpolate import LinearInterpolate
+from .anchor import Anchor
 
-# Wanted to add support for having project-local YAML file with the
-# configuration so that projects could override the defaults.
-#
-# But it seems Python still lacks any decent support for easy round-trip
-# (de)serialisation, and isn't even close to what C# had 12 years ago.
-#
-# So let's leave a hardcoded configuration for now.
-
-
-@dataclass
-class Point():
-	x: float = 0
-	y: float = 0
-
-
-class LinearInterpolate():
-
-	@staticmethod
-	def float(a: float, b: float, i: float) -> float:
-		return a + i * (b - a)
-
-	@staticmethod
-	def rectangle(rect: pcbnew.EDA_RECT, i: Point) -> Point:
-		return Point(
-			LinearInterpolate.float(rect.GetLeft(), rect.GetRight(), i.x),
-			LinearInterpolate.float(rect.GetTop(), rect.GetBottom(), i.y)
-		)
-
-	@staticmethod
-	def space(amount: float, i: float) -> float:
-		return LinearInterpolate.float(-amount, amount, i)
-
-
-class Anchor(Enum):
-
-	C = Point(0.5, 0.5)
-
-	N = Point(0.5, 0.0)
-	W = Point(0.0, 0.5)
-	S = Point(0.5, 1.0)
-	E = Point(1.0, 0.5)
-
-	NW = Point(0.0, 0.0)
-	SW = Point(0.0, 1.0)
-	SE = Point(1.0, 1.0)
-	NE = Point(1.0, 0.0)
+from .plugin import Plugin
 
 
 @dataclass(frozen=True, eq=True)
@@ -84,7 +41,7 @@ class TextConfiguration():
 
 
 @dataclass
-class PluginConfiguration():
+class TextPluginConfiguration():
 
 	reference: TextConfiguration = TextConfiguration(
 		layer=LayerConfiguration(name="Refs", color="#00FF20FF"),
@@ -100,11 +57,7 @@ class PluginConfiguration():
 	angle_scale: int = 10
 
 
-class Plugin():
-
-	def __init__(self, board: pcbnew.BOARD, configuration: PluginConfiguration):
-		self.board = board
-		self.configuration = configuration
+class TextPlugin(Plugin):
 
 	def calc_length(self, value: float) -> int:
 		return int(self.configuration.size_scale * value)
