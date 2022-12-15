@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Iterable, Sequence, List
+from typing import TypeVar, Generic, Iterable, Sequence, List, Optional
 
 
 ListItemType = TypeVar("ListItemType")
 
 
-class ListBoxAdapter(ABC, Generic[ListItemType]):
+class ListBoxAdapter(Generic[ListItemType], ABC):
 
 	@abstractmethod
 	def get_items(self) -> List[ListItemType]:
@@ -24,5 +24,5 @@ class ListBoxAdapter(ABC, Generic[ListItemType]):
 		pass
 
 	@abstractmethod
-	def update_model(self):
+	def update(self) -> None:
 		pass

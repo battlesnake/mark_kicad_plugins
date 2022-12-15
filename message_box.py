@@ -6,6 +6,10 @@ class MessageBox():
 
 	def execute(self) -> None:
 		import wx
-		dialog = wx.MessageDialog(None, message=self.message, caption=self.title)
-		dialog.ShowModal()
-		dialog.Destroy()
+		app = wx.App()
+		dialog = wx.MessageDialog(app, message=self.message, caption=self.title)
+		try:
+			dialog.ShowModal()
+		finally:
+			dialog.Destroy()
+			app.Destroy()

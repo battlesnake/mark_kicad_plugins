@@ -1,17 +1,18 @@
-from typing import List, Optional, Sequence, Set, Iterable
+from typing import Optional, Sequence, Set, Iterable, List
 from dataclasses import dataclass
 from enum import Enum
+from logging import Logger
+
+import wx
 
 import pcbnew  # pyright: ignore
 
+from .wx_utils import WxUtils
 from .list_box_binding import ListBoxBinding
 from .list_box_adapter import ListBoxAdapter
 from .enum_list_box_adapter import SingleEnumListBoxAdapter
-from .hierarchy_parser import SheetInstance, SheetID
-
-
-Footprint = pcbnew.FOOTPRINT
-Instance = SheetInstance
+from .hierarchy_parser import SheetInstance, Footprint
+from .string_utils import StringUtils
 
 
 class ClonePositionStrategy(Enum):
@@ -31,8 +32,8 @@ class ClonePositionSettings():
 
 @dataclass
 class CloneSettings():
-	anchor: Optional[Footprint]
-	instances: Set[Instance]
+	anchor: Footprint
+	instances: Set[SheetInstance]
 	positioning: ClonePositionSettings
 
 	def is_valid(self) -> bool:
@@ -44,52 +45,72 @@ class CloneSettingsDialog():
 
 	def __init__(
 		self,
+		logger: Logger,
 		footprints: Iterable[Footprint],
-		instances: Iterable[Instance],
+		instances: Iterable[SheetInstance],
 		settings: Optional[CloneSettings] = None
 	):
-		self.footprints = sorted(footprints, key=lambda footprint: str(footprint.GetReference()))
-		self.instances = sorted(instances, key=lambda instance: " / ".join(instance.name_chain()))
+		self.logger = logger
+		if not footprints:
+			raise ValueError("No footprints provided")
+		self.footprints = sorted(footprints, key=lambda footprint: footprint.reference)
+		self.instances = sorted(instances, key=lambda instance: instance.name_path)
 		if settings is None:
 			settings = CloneSettings(
-				anchor=None,
+				anchor=self.footprints[0],
 				instances=set(),
 				positioning=ClonePositionSettings()
 			)
 		self.settings = settings
 
 	def execute(self) -> bool:
-		import wx
-		from .wx_utils import WxUtils
-
-
+		logger = self.logger
 		footprints = self.footprints
-		instances: Iterable[Instance] = self.instances
+		instances: List[SheetInstance] = self.instances
 		settings = self.settings
 
-		if not footprints:
-			raise ValueError("No footprints provided")
-
-		if settings.anchor is None or settings.anchor not in footprints:
-			settings.anchor = footprints[0]
-
-		settings.instances = settings.instances.intersection(instances)
+		settings.instances = set(instances)
 
 		class AnchorListBoxAdapter(ListBoxAdapter[Footprint]):
 			def get_items(self): return footprints
-			def get_caption(self, item: Footprint): return item.GetReference()
+			def get_caption(self, item: Footprint): return f"{item.reference} ({item.value})"
 			def get_selected(self): return [settings.anchor]
-			def set_selected(self, items: Sequence[Footprint]): settings.anchor = items[0] if items else None
-			def update_model(self):
-				ok_button.Enable(settings.is_valid())
+			def set_selected(self, items: Sequence[Footprint]): settings.anchor = items[0]
+			def update(self): ok_button.Enable(settings.is_valid())
 
-		class InstancesListBoxAdapter(ListBoxAdapter[Instance]):
+		class InstancesListBoxAdapter(ListBoxAdapter[SheetInstance]):
+			def __init__(self):
+				self.prev_selection: Set[SheetInstance] = settings.instances
 			def get_items(self): return instances
-			def get_caption(self, item): return item
+			def get_caption(self, item: SheetInstance): return item.name_path
 			def get_selected(self): return settings.instances
-			def set_selected(self, items: Sequence[Instance]): settings.instances = set(items)
-			def update_model(self):
-				ok_button.Enable(settings.is_valid())
+			def set_selected(self, items: Sequence[SheetInstance]):
+				settings.instances = set(items)
+				self.update_hierarchical_selection()
+			def update(self): ok_button.Enable(settings.is_valid())
+			def update_hierarchical_selection(self):
+				prev_selection = self.prev_selection
+				selection = settings.instances
+				selected: Set[SheetInstance] = selection.difference(prev_selection)
+				deselected: Set[SheetInstance] = prev_selection.difference(selection)
+				to_select: Set[SheetInstance] = set()
+				to_deselect: Set[SheetInstance] = set()
+				for instance in instances:
+					for item in deselected:
+						if StringUtils.is_child_of(instance.uuid_chain, item.uuid_chain):
+							to_deselect.add(instance)
+					for item in selected:
+						if StringUtils.is_child_of(item.uuid_chain, instance.uuid_chain):
+							to_select.add(instance)
+				to_select.difference_update(selection)
+				to_deselect.intersection_update(selection)
+				if not to_select and not to_deselect:
+					self.prev_selection = set(settings.instances)
+					return
+				result = settings.instances.difference(to_deselect).union(to_select)
+				settings.instances = result
+				self.prev_selection = result
+				instances_binding.update_view()
 
 		def position_strategy_update_model(value: ClonePositionStrategy):
 			settings.positioning.strategy = value
@@ -111,7 +132,7 @@ class CloneSettingsDialog():
 			instances_binding = ListBoxBinding(instances_list_box, InstancesListBoxAdapter())
 
 			position_strategy_list_box = wx.ListBox(frame, -1, choices=[], style=wx.LB_SINGLE)
-			position_strategy_binding = ListBoxBinding(position_strategy_list_box, SingleEnumListBoxAdapter(ClonePositionStrategy.RELATIVE, position_strategy_update_model))
+			position_strategy_binding = ListBoxBinding(position_strategy_list_box, SingleEnumListBoxAdapter(ClonePositionStrategy, position_strategy_update_model))
 
 			ok_button = wx.Button(frame, -1, "Ok")
 			frame.Bind(wx.EVT_BUTTON, ok_button_click, ok_button)
@@ -149,7 +170,7 @@ class CloneSettingsDialog():
 			hbox.AddSpacer(10)
 			hbox.Add(WxUtils.wrap_control_with_caption(anchor_list_box, "Select anchor", wx.EXPAND))
 			hbox.AddSpacer(10)
-			hbox.Add(WxUtils.wrap_control_with_caption(instances_list_box, "Select instances", wx.EXPAND))
+			hbox.Add(WxUtils.wrap_control_with_caption(instances_list_box, "Select instances to clone to", wx.EXPAND))
 			hbox.AddSpacer(10)
 			hbox.Add(pos_vbox)
 			hbox.AddSpacer(10)
@@ -167,5 +188,7 @@ class CloneSettingsDialog():
 			vbox.Fit(frame)
 
 			anchor_binding.update()
+			instances_binding.update()
+			position_strategy_binding.update()
 
 		return dialog.get_result()

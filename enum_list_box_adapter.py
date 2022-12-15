@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic, Iterable, Sequence, List, Callable
+from typing import TypeVar, Generic, Iterable, Sequence, List, Callable, get_args, final, Type, Optional
 from enum import Enum
 
 from .list_box_adapter import ListBoxAdapter
@@ -7,14 +7,21 @@ from .list_box_adapter import ListBoxAdapter
 EnumListItemType = TypeVar("EnumListItemType", bound=Enum)
 
 
+@final
 class SingleEnumListBoxAdapter(Generic[EnumListItemType], ListBoxAdapter[EnumListItemType]):
 
-	def __init__(self, value: EnumListItemType, update_model: Callable[[EnumListItemType], None]):
-		self.value = value
-		self._update_model = update_model
+	def __init__(
+		self,
+		type: Type[EnumListItemType],
+		update: Callable[[EnumListItemType], None],
+		value: Optional[EnumListItemType] = None
+	):
+		self.type = type
+		self.value = list(type)[0] if value is None else value
+		self._update = update
 
 	def get_items(self) -> List[EnumListItemType]:
-		return list(self.__args__[0])
+		return list(self.type)
 
 	def get_caption(self, item: EnumListItemType) -> str:
 		return item.name
@@ -25,18 +32,25 @@ class SingleEnumListBoxAdapter(Generic[EnumListItemType], ListBoxAdapter[EnumLis
 	def set_selected(self, items: Sequence[EnumListItemType]) -> None:
 		self.value = items[0]
 
-	def update_model(self):
-		self._update_model(self.value)
+	def update(self):
+		self._update(self.value)
 
 
+@final
 class MultipleEnumListBoxAdapter(Generic[EnumListItemType], ListBoxAdapter[EnumListItemType]):
 
-	def __init__(self, value: Iterable[EnumListItemType], update_model: Callable[[Sequence[EnumListItemType]], None]):
-		self.value = value
-		self._update_model = update_model
+	def __init__(
+		self,
+		type: Type[EnumListItemType],
+		update: Callable[[Sequence[EnumListItemType]], None],
+		value: Optional[Iterable[EnumListItemType]] = None
+	):
+		self.type = type
+		self.value = [] if value is None else value
+		self._update = update
 
 	def get_items(self) -> List[EnumListItemType]:
-		return list(self.__args__[0])
+		return list(self.type)
 
 	def get_caption(self, item: EnumListItemType) -> str:
 		return item.name
@@ -47,5 +61,5 @@ class MultipleEnumListBoxAdapter(Generic[EnumListItemType], ListBoxAdapter[EnumL
 	def set_selected(self, items: Sequence[EnumListItemType]) -> None:
 		self.value = items
 
-	def update_model(self):
-		self._update_model(list(self.value))
+	def update(self):
+		self._update(list(self.value))

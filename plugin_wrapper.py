@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, asdict
 import logging
 import sys
+import os
 import os.path
 
 import pcbnew  # pyright: ignore
@@ -57,12 +58,15 @@ class PluginWrapper(pcbnew.ActionPlugin, Generic[ConfigurationType]):
 			board = pcbnew.GetBoard()
 			filename = os.path.abspath(board.GetFileName())
 
+			logger.info("Entering project directory")
+			os.chdir(os.path.dirname(filename))
+
 			logger.info("Initialising log sinks")
 			self.init_log_sink(os.path.dirname(filename))
 
 			logger.info("Platform: %s", sys.platform)
 			logger.info("Python version: %s", sys.version)
-			logger.info("KiCad build version: %s" + pcbnew.GetBuildVersion())
+			logger.info("KiCad build version: %s", pcbnew.GetBuildVersion())
 
 			logger.info("Filename: %s", filename)
 			logger.info("Metadata: %s", asdict(self.get_metadata()))

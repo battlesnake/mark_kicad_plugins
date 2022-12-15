@@ -1,20 +1,12 @@
 from dataclasses import dataclass
-from typing import List, TypeVar, Iterable, Union
+from typing import List, TypeVar, Iterable
 
 import pcbnew  # pyright: ignore
 
 from .plugin import Plugin
 from .clone_settings import CloneSettings, CloneSettingsDialog
-from .hierarchy_parser import HierarchyParser, SheetInstance, SheetID
-
-
-Board = pcbnew.BOARD
-Footprint = pcbnew.FOOTPRINT
-Track = pcbnew.PCB_TRACK
-Via = pcbnew.PCB_VIA
-Segment = Union[Track, Via]
-Item = pcbnew.EDA_ITEM
-Instance = str
+from .hierarchy_parser import HierarchyParser, SheetInstance, Footprint, UuidPath
+from .string_utils import StringUtils
 
 
 @dataclass
@@ -36,42 +28,48 @@ class ClonePlugin(Plugin):
 			if item.IsSelected()
 		]
 
-	def get_instances(self, footprints: Iterable[Footprint]) -> Iterable[SheetInstance]:
-		logger = self.logger
-		board = self.board
-		hierarchy = HierarchyParser(logger, board)
-		hierarchy.parse()
-		footprint_sheets = set(
-			hierarchy.by_footprint[str(footprint.GetReference())]
+	@staticmethod
+	def path_to_str(path: pcbnew.KIID_PATH) -> str:
+		return "".join(f"/{uuid.AsString()}" for uuid in path)
+
+	def get_instances(self, hierarchy: HierarchyParser, footprints: Iterable[Footprint]) -> Iterable[SheetInstance]:
+		footprint_sheet_uuid_chains = set(
+			footprint.symbol.sheet_instance.uuid_chain
 			for footprint in footprints
 		)
-
-		for fp in footprints:
-			logger.info(" - FP=%s, SHEET=%s", fp.GetReference(), hierarchy.by_footprint[str(fp.GetReference())])
-
-		if not footprint_sheets:
-			raise Exception("Failed to identify bounding sheet of selected footprints")
-		bounding_sheet_path_chain = HierarchyParser.get_common_ancestor_of(
-			sheet.path_chain()
-			for sheet in footprint_sheets
-		)
-		if not bounding_sheet_path_chain:
-			raise Exception("Bounding sheet is top-level sheet")
-		bounding_sheet_path = bounding_sheet_path_chain[-1]
-		return hierarchy.by_path[bounding_sheet_path]
+		common_ancestor_uuid_chain = UuidPath.from_parts(StringUtils.get_common_ancestor_of(footprint_sheet_uuid_chains))
+		common_ancestor = hierarchy.instances[common_ancestor_uuid_chain]
+		return [
+			sheet_instance
+			for sheet_instance in hierarchy.instances.values()
+			if StringUtils.is_same_or_is_child_of(sheet_instance.template_uuid_chain, common_ancestor.template_uuid_chain)
+			if sheet_instance != common_ancestor
+		]
 
 	def execute(self) -> None:
 		logger = self.logger
 		board = self.board
-		selected_footprints: List[Footprint] = self.filter_selected(board.Footprints())
-		selected_items: List[Item] = \
+		
+		hierarchy = HierarchyParser(logger, board)
+		hierarchy.parse()
+
+		selected_footprints: List[Footprint] = [
+			hierarchy.footprints[UuidPath.from_kiid_path(footprint.GetPath())]
+			for footprint in self.filter_selected(board.Footprints())
+		]
+		if not selected_footprints:
+			logger.error("No footprints selected")
+			raise ValueError("No footprints in selection")
+
+		instances = self.get_instances(hierarchy, selected_footprints)
+
+		settings_dialog = CloneSettingsDialog(logger, selected_footprints, instances)
+		if not settings_dialog.execute():
+			logger.error("Dialog rejected by user")
+			return
+
+		selected_items: List[pcbnew.EDA_ITEM] = \
 				self.filter_selected(board.Footprints()) + \
 				self.filter_selected(board.Tracks()) + \
 				self.filter_selected(board.Drawings()) + \
 				self.filter_selected(board.Zones())
-		if not selected_footprints:
-			raise ValueError("No footprints in selection")
-		instances = self.get_instances(selected_footprints)
-		settings_dialog = CloneSettingsDialog(selected_footprints, instances)
-		if not settings_dialog.execute():
-			return
