@@ -5,7 +5,8 @@ import pcbnew  # pyright: ignore
 
 from .plugin import Plugin
 from .clone_settings import CloneSettings, CloneSettingsDialog
-from .hierarchy_parser import HierarchyParser, SheetInstance, Footprint, UuidPath
+from .kicad_entities import  SheetInstance, Footprint, UuidPath
+from .hierarchy_parser import HierarchyParser, Hierarchy
 from .string_utils import StringUtils
 
 
@@ -32,7 +33,7 @@ class ClonePlugin(Plugin):
 	def path_to_str(path: pcbnew.KIID_PATH) -> str:
 		return "".join(f"/{uuid.AsString()}" for uuid in path)
 
-	def get_instances(self, hierarchy: HierarchyParser, footprints: Iterable[Footprint]) -> Iterable[SheetInstance]:
+	def get_instances(self, hierarchy: Hierarchy, footprints: Iterable[Footprint]) -> Iterable[SheetInstance]:
 		footprint_sheet_uuid_chains = set(
 			footprint.symbol.sheet_instance.uuid_chain
 			for footprint in footprints
@@ -50,8 +51,7 @@ class ClonePlugin(Plugin):
 		logger = self.logger
 		board = self.board
 		
-		hierarchy = HierarchyParser(logger, board)
-		hierarchy.parse()
+		hierarchy = HierarchyParser(logger, board).parse()
 
 		selected_footprints: List[Footprint] = [
 			hierarchy.footprints[UuidPath.from_kiid_path(footprint.GetPath())]
