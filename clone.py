@@ -1,11 +1,20 @@
 from dataclasses import dataclass
 from typing import List, TypeVar, Iterable, Union
-import functools
 
 import pcbnew  # pyright: ignore
 
 from .plugin import Plugin
-from .choice_box import ChoiceBox
+from .clone_settings import CloneSettings, CloneSettingsDialog
+from .hierarchy_parser import HierarchyParser, SheetInstance, SheetID
+
+
+Board = pcbnew.BOARD
+Footprint = pcbnew.FOOTPRINT
+Track = pcbnew.PCB_TRACK
+Via = pcbnew.PCB_VIA
+Segment = Union[Track, Via]
+Item = pcbnew.EDA_ITEM
+Instance = str
 
 
 @dataclass
@@ -19,18 +28,6 @@ ItemType = TypeVar("ItemType", bound=pcbnew.EDA_ITEM)
 
 class ClonePlugin(Plugin):
 
-	def get_anchor_footprint(self, footprints: List[pcbnew.FOOTPRINT]) -> pcbnew.FOOTPRINT:
-		names = [str(footprint.GetReference()) for footprint in footprints]
-		anchor = ChoiceBox(
-			title="Select anchor component",
-			message="This component's counterparts in other instances of the sheet will be used as anchors in the PCB layout for rebuilding the subcircuit around",
-			choices=names,
-			multiple=False
-		).execute()
-		if anchor is None:
-			raise ValueError("No anchor footprint selected")
-		return footprints[anchor[0]]
-
 	@staticmethod
 	def filter_selected(items: Iterable[ItemType]) -> List[ItemType]:
 		return [
@@ -39,12 +36,42 @@ class ClonePlugin(Plugin):
 			if item.IsSelected()
 		]
 
-	def execute(self) -> None:
+	def get_instances(self, footprints: Iterable[Footprint]) -> Iterable[SheetInstance]:
+		logger = self.logger
 		board = self.board
-		footprints: List[pcbnew.FOOTPRINT] \
-				= self.filter_selected(board.GetFootprints())
-		if not footprints:
+		hierarchy = HierarchyParser(logger, board)
+		hierarchy.parse()
+		footprint_sheets = set(
+			hierarchy.by_footprint[str(footprint.GetReference())]
+			for footprint in footprints
+		)
+
+		for fp in footprints:
+			logger.info(" - FP=%s, SHEET=%s", fp.GetReference(), hierarchy.by_footprint[str(fp.GetReference())])
+
+		if not footprint_sheets:
+			raise Exception("Failed to identify bounding sheet of selected footprints")
+		bounding_sheet_path_chain = HierarchyParser.get_common_ancestor_of(
+			sheet.path_chain()
+			for sheet in footprint_sheets
+		)
+		if not bounding_sheet_path_chain:
+			raise Exception("Bounding sheet is top-level sheet")
+		bounding_sheet_path = bounding_sheet_path_chain[-1]
+		return hierarchy.by_path[bounding_sheet_path]
+
+	def execute(self) -> None:
+		logger = self.logger
+		board = self.board
+		selected_footprints: List[Footprint] = self.filter_selected(board.Footprints())
+		selected_items: List[Item] = \
+				self.filter_selected(board.Footprints()) + \
+				self.filter_selected(board.Tracks()) + \
+				self.filter_selected(board.Drawings()) + \
+				self.filter_selected(board.Zones())
+		if not selected_footprints:
 			raise ValueError("No footprints in selection")
-		tracks: List[Union[pcbnew.PCB_TRACK, pcbnew.PCB_VIA]] \
-				= self.filter_selected(board.GetTracks())
-		anchor = self.get_anchor_footprint(footprints)
+		instances = self.get_instances(selected_footprints)
+		settings_dialog = CloneSettingsDialog(selected_footprints, instances)
+		if not settings_dialog.execute():
+			return
