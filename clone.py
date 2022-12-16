@@ -102,22 +102,28 @@ class ClonePlugin(Plugin):
 		# TODO: Option to clear target placement area so we never create
 		# overlaps
 
-		for target, placement in placement_strategy:
-			for raw_footprint in self.filter_selected(board.Footprints()):
-				# 1. get footprint from pcbnew object
-				# 2. get footprint name-chain
-				# 3. remove name-chain-suffix of reference sheet instance from common ancestor
-				# 4. add name-chain-suffix of target sheet from common ancestor
-				# 5. find footprint
-				# 6. apply placement
-				#
-				footprint = hierarchy.footprints[UuidPath.from_kiid_path(raw_footprint.GetPath())]
+		for anchor, placement in placement_strategy:
+			for source_footprint in self.filter_selected(board.Footprints()):
+				# 1. get footprint path (sheet/sheet/.../footprint)
+				# 2. replace footprint (last) part of reference footprint path with this footprint's path uuid
+				# 3. resolve footprint from path
+				# 4. apply placement
+				source_path = UuidPath.from_kiid_path(source_footprint.GetPath())
+				anchor_path = anchor.path
+				target_path = UuidPath(list(anchor_path.value[:-1]) + [source_path.value[-1]])
+				target_footprint = hierarchy.footprints[target_path]
 				pass
-			for track in self.filter_selected(board.Tracks()):
+			for source_track in self.filter_selected(board.Tracks()):
+				# 1. Duplicate the track
+				# 2. Apply placement
 				pass
-			for drawing in self.filter_selected(board.Drawings()):
+			for source_drawing in self.filter_selected(board.Drawings()):
+				# 1. Duplicate the drawing
+				# 2. Apply placement
 				pass
-			for zone in self.filter_selected(board.Zones()):
+			for source_zone in self.filter_selected(board.Zones()):
+				# 1. Duplicate the zone
+				# 2. Apply placement
 				pass
 
 	def execute(self) -> None:
