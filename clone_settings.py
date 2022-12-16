@@ -1,194 +1,161 @@
-from typing import Optional, Sequence, Set, Iterable, List
+from typing import Optional, Set, Iterable, List, final
 from dataclasses import dataclass
-from enum import Enum
 from logging import Logger
 
 import wx
+import wx.dataview
 
 import pcbnew  # pyright: ignore
 
-from .wx_utils import WxUtils
-from .list_box_binding import ListBoxBinding
-from .list_box_adapter import ListBoxAdapter
-from .enum_list_box_adapter import SingleEnumListBoxAdapter
-from .hierarchy_parser import SheetInstance, Footprint
-from .string_utils import StringUtils
+from .kicad_entities import SheetInstance, Footprint, SIZE_SCALE
+from .multi_map import MultiMap
+from .list_box_adapter import StaticListBoxAdapter
+from .choice_adapter import StaticChoiceAdapter
+from .tree_control_branch_selection_adapter import TreeControlBranchSelectionAdapter
+from .clone_placement import ClonePlacementSettings, ClonePlacementStrategyType, ClonePlacementRelativeStrategySettings, ClonePlacementGridStrategySettings, ClonePlacementGridFlow
 
-
-class ClonePositionStrategy(Enum):
-	RELATIVE = "relative"
-	HORIZONTAL = "horizontal"
-	VERTICAL = "vertical"
-
-
-@dataclass
-class ClonePositionSettings():
-	strategy: ClonePositionStrategy = ClonePositionStrategy.RELATIVE
-	# main_interval: float = 1
-	# wrap: bool = False
-	# wrap_count: int = 8
-	# cross_interval: float = 1
+from .clone_settings_dialog_wfb import CloneSettingsDialog
 
 
 @dataclass
 class CloneSettings():
-	anchor: Footprint
 	instances: Set[SheetInstance]
-	positioning: ClonePositionSettings
+	placement: ClonePlacementSettings
 
 	def is_valid(self) -> bool:
-		return self.anchor is not None \
-				and not not self.instances
+		return bool(self.instances) and self.placement.is_valid()
 
 
-class CloneSettingsDialog():
+@dataclass
+class CloneSettingsDomain():
+	instances: List[SheetInstance]
+	footprints: List[Footprint]
+	relations: MultiMap[SheetInstance, SheetInstance]
+
+
+class CloneSettingsDialog(CloneSettingsDialog):
 
 	def __init__(
 		self,
 		logger: Logger,
 		footprints: Iterable[Footprint],
 		instances: Iterable[SheetInstance],
+		relations: MultiMap[SheetInstance, SheetInstance],
 		settings: Optional[CloneSettings] = None
 	):
+		super().__init__(wx.FindWindowByName("PcbFrame"))
 		self.logger = logger
 		if not footprints:
 			raise ValueError("No footprints provided")
-		self.footprints = sorted(footprints, key=lambda footprint: footprint.reference)
-		self.instances = sorted(instances, key=lambda instance: instance.name_path)
+		self.domain = CloneSettingsDomain(
+			instances=sorted(instances, key=lambda instance: instance.name_path),
+			footprints=sorted(footprints, key=lambda footprint: footprint.reference),
+			relations=relations,
+		)
 		if settings is None:
 			settings = CloneSettings(
-				anchor=self.footprints[0],
-				instances=set(),
-				positioning=ClonePositionSettings()
+				instances=set(self.domain.instances),
+				placement=ClonePlacementSettings(
+					strategy=ClonePlacementStrategyType.RELATIVE,
+					relative=ClonePlacementRelativeStrategySettings(
+						anchor=self.domain.footprints[0],
+					),
+					grid=ClonePlacementGridStrategySettings(),
+				)
 			)
 		self.settings = settings
+		this = self
+
+		self.position_strategy.SetSelection(list(ClonePlacementStrategyType).index(self.settings.placement.strategy))
+		self.grid_wrap.SetValue(self.settings.placement.grid.wrap)
+		self.grid_wrap_at.SetValue(self.settings.placement.grid.wrap_at)
+		self.grid_main_interval.SetValue(self.settings.placement.grid.main_interval / SIZE_SCALE)
+		self.grid_cross_interval.SetValue(self.settings.placement.grid.cross_interval / SIZE_SCALE)
+
+		@final
+		class InstancesAdapter(TreeControlBranchSelectionAdapter):
+			def selection_changed(self): this.instances_adapter_selection_changed()
+		self.instances_adapter = InstancesAdapter(
+			items=self.domain.instances,
+			relations=self.domain.relations,
+			control=self.instances,
+			selection=self.settings.instances,
+		)
+
+		@final
+		class RelativeAnchorAdapter(StaticListBoxAdapter[Footprint]):
+			def selection_changed(self): this.relative_anchor_adapter_selection_changed()
+		self.relative_anchor_adapter = RelativeAnchorAdapter(
+			control=self.relative_anchor,
+			items=self.domain.footprints,
+			selection=[item for item in [self.settings.placement.relative.anchor] if item is not None],
+		)
+
+		@final
+		class GridFlowDirectionAdapter(StaticChoiceAdapter[ClonePlacementGridFlow]):
+			def get_caption(self, item: ClonePlacementGridFlow) -> str: return item.value
+			def selection_changed(self): this.grid_flow_direction_adapter_selection_changed()
+		self.grid_flow_direction_adapter = GridFlowDirectionAdapter(
+			control=self.grid_flow_direction,
+			items=list(ClonePlacementGridFlow),
+			selection=this.settings.placement.grid.flow,
+		)
 
 	def execute(self) -> bool:
-		logger = self.logger
-		footprints = self.footprints
-		instances: List[SheetInstance] = self.instances
-		settings = self.settings
+		try:
+			return self.ShowModal() == wx.ID_OK
+		finally:
+			self.Destroy()
 
-		settings.instances = set(instances)
+	def model_changed(self) -> None:
+		self.ok_button.Enable(self.settings.is_valid())
 
-		class AnchorListBoxAdapter(ListBoxAdapter[Footprint]):
-			def get_items(self): return footprints
-			def get_caption(self, item: Footprint): return f"{item.reference} ({item.value})"
-			def get_selected(self): return [settings.anchor]
-			def set_selected(self, items: Sequence[Footprint]): settings.anchor = items[0]
-			def update(self): ok_button.Enable(settings.is_valid())
+	def instances_adapter_selection_changed(self) -> None:
+		self.settings.instances = self.instances_adapter.selection
+		self.model_changed()
 
-		class InstancesListBoxAdapter(ListBoxAdapter[SheetInstance]):
-			def __init__(self):
-				self.prev_selection: Set[SheetInstance] = settings.instances
-			def get_items(self): return instances
-			def get_caption(self, item: SheetInstance): return item.name_path
-			def get_selected(self): return settings.instances
-			def set_selected(self, items: Sequence[SheetInstance]):
-				settings.instances = set(items)
-				self.update_hierarchical_selection()
-			def update(self): ok_button.Enable(settings.is_valid())
-			def update_hierarchical_selection(self):
-				prev_selection = self.prev_selection
-				selection = settings.instances
-				selected: Set[SheetInstance] = selection.difference(prev_selection)
-				deselected: Set[SheetInstance] = prev_selection.difference(selection)
-				to_select: Set[SheetInstance] = set()
-				to_deselect: Set[SheetInstance] = set()
-				for instance in instances:
-					for item in deselected:
-						if StringUtils.is_child_of(instance.uuid_chain, item.uuid_chain):
-							to_deselect.add(instance)
-					for item in selected:
-						if StringUtils.is_child_of(item.uuid_chain, instance.uuid_chain):
-							to_select.add(instance)
-				to_select.difference_update(selection)
-				to_deselect.intersection_update(selection)
-				if not to_select and not to_deselect:
-					self.prev_selection = set(settings.instances)
-					return
-				result = settings.instances.difference(to_deselect).union(to_select)
-				settings.instances = result
-				self.prev_selection = result
-				instances_binding.update_view()
+	def relative_anchor_adapter_selection_changed(self) -> None:
+		self.settings.placement.relative.anchor = self.relative_anchor_adapter.selection[0]
+		self.model_changed()
 
-		def position_strategy_update_model(value: ClonePositionStrategy):
-			settings.positioning.strategy = value
+	def grid_flow_direction_adapter_selection_changed(self) -> None:
+		self.settings.placement.grid.flow = self.grid_flow_direction_adapter.selection
+		self.model_changed()
 
-		def ok_button_click(event) -> None:
-			dialog.set_result(True)
-			frame.Close()
+	### Overrides
 
-		dialog = WxUtils.dialog("Mark's clone plugin", False)
+	def instances_edit_veto( self, event ):
+		event.Veto()
 
-		with dialog as frame:
+	def instances_selection_toggle(self, event):
+		pass  # Handled by adapter
 
-			message_text = wx.StaticText(frame, -1, "Clone settings")
+	def position_strategy_changed(self, event):
+		self.settings.placement.strategy = tuple(ClonePlacementStrategyType)[self.position_strategy.GetSelection()]
+		self.model_changed()
 
-			anchor_list_box = wx.ListBox(frame, -1, choices=[], style=wx.LB_SINGLE | wx.LB_SORT, size=(200, 300))
-			anchor_binding = ListBoxBinding(anchor_list_box, AnchorListBoxAdapter())
+	def relative_anchor_changed(self, event):
+		pass  # Handled by adapter
 
-			instances_list_box = wx.ListBox(frame, -1, choices=[], style=wx.LB_MULTIPLE | wx.LB_SORT, size=(500, 300))
-			instances_binding = ListBoxBinding(instances_list_box, InstancesListBoxAdapter())
+	def grid_flow_direction_changed(self, event):
+		pass  # Handled by adapter
 
-			position_strategy_list_box = wx.ListBox(frame, -1, choices=[], style=wx.LB_SINGLE)
-			position_strategy_binding = ListBoxBinding(position_strategy_list_box, SingleEnumListBoxAdapter(ClonePositionStrategy, position_strategy_update_model))
+	def grid_wrap_changed(self, event):
+		self.settings.placement.grid.wrap = self.grid_wrap.GetValue()
+		self.model_changed()
 
-			ok_button = wx.Button(frame, -1, "Ok")
-			frame.Bind(wx.EVT_BUTTON, ok_button_click, ok_button)
+	def grid_wrap_at_changed(self, event):
+		self.settings.placement.grid.wrap_at = self.grid_wrap_at.GetValue()
+		self.model_changed()
 
-			"""
-			Layout structure:
-			 - vertical vbox:
-				- spacer
-				- caption
-				- spacer
-				- horizontal hbox:
-				  - spacer
-				  - vertical vbox:
-					- text
-					- anchor single-select list
-				  - spacer
-				  - vertical vbox:
-					- text
-					- instances multi-select list
-				  - spacer
-				  - vertical vbox:
-					- text
-					- position-strategy single-select list
-					- TODO
-				  - spacer
-				- spacer
-				- button
-				- spacer
-			"""
+	def grid_main_interval_changed(self, event):
+		self.settings.placement.grid.main_interval = int(self.grid_main_interval.GetValue() * SIZE_SCALE)
+		self.model_changed()
 
-			pos_vbox = wx.BoxSizer(wx.VERTICAL)
-			pos_vbox.Add(WxUtils.wrap_control_with_caption(position_strategy_list_box, "Positioning strategy", wx.ADJUST_MINSIZE))
+	def grid_cross_interval_changed(self, event):
+		self.settings.placement.grid.cross_interval = int(self.grid_cross_interval.GetValue(), SIZE_SCALE)
+		self.model_changed()
 
-			hbox = wx.BoxSizer(wx.HORIZONTAL)
-			hbox.AddSpacer(10)
-			hbox.Add(WxUtils.wrap_control_with_caption(anchor_list_box, "Select anchor", wx.EXPAND))
-			hbox.AddSpacer(10)
-			hbox.Add(WxUtils.wrap_control_with_caption(instances_list_box, "Select instances to clone to", wx.EXPAND))
-			hbox.AddSpacer(10)
-			hbox.Add(pos_vbox)
-			hbox.AddSpacer(10)
-
-			vbox = wx.BoxSizer(wx.VERTICAL)
-			vbox.AddSpacer(10)
-			vbox.Add(message_text, flag=wx.ADJUST_MINSIZE)
-			vbox.AddSpacer(10)
-			vbox.Add(hbox, flag=wx.EXPAND)
-			vbox.AddSpacer(10)
-			vbox.Add(ok_button, flag=wx.ADJUST_MINSIZE)
-			vbox.AddSpacer(10)
-
-			frame.SetSizer(vbox)
-			vbox.Fit(frame)
-
-			anchor_binding.update()
-			instances_binding.update()
-			position_strategy_binding.update()
-
-		return dialog.get_result()
+	def ok_button_click(self, event):
+		self.SetReturnCode(wx.ID_OK)
+		self.Close()

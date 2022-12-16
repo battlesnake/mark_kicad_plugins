@@ -13,6 +13,12 @@ class MultiMap(Generic[KeyType, ValueType]):
 		self.mapping = {}
 		self.key_func = key_func
 
+	def copy(self) -> "MultiMap[KeyType, ValueType]":
+		result = MultiMap()
+		for key, value in self:
+			result[key] = value
+		return result
+
 	def __getitem__(self, key: KeyType) -> Set[ValueType]:
 		return set(self.mapping.get(key, set()))
 
@@ -43,3 +49,9 @@ class MultiMap(Generic[KeyType, ValueType]):
 		if self.key_func is None:
 			raise KeyError("Key function has not been provided")
 		self[self.key_func(value)] = value
+	
+	def invert(self) -> Dict[ValueType, KeyType]:
+		return {
+			value: key
+			for key, value in self
+		}

@@ -8,6 +8,9 @@ import pcbnew  # pyright: ignore
 from .kicad_sexp_parser import KicadSexpNode
 
 
+SIZE_SCALE: int = 1000000
+
+
 Filename = str
 Reference = str
 
@@ -58,6 +61,9 @@ class SheetInstance():
 
 	parent: Optional["SheetInstance"] = field(hash=False)
 
+	def __str__(self) -> str:
+		return self.name_path
+
 	@cached_property
 	def uuid_path(self) -> UuidPath:
 		return UuidPath.from_parts(self.uuid_chain)
@@ -103,6 +109,9 @@ class Symbol():
 
 	sheet_instance: SheetInstance = field(hash=False)
 
+	def __str__(self) -> str:
+		return f"{self.reference}:{self.unit} ({self.value})"
+
 
 @dataclass(frozen=True, eq=True)
 class Footprint():
@@ -111,3 +120,8 @@ class Footprint():
 	value: str
 
 	symbol: Symbol = field(hash=False)
+
+	data: pcbnew.FOOTPRINT = field(hash=False, compare=False, repr=False)
+
+	def __str__(self) -> str:
+		return f"{self.reference} ({self.value})"

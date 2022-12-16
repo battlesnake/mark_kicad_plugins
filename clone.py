@@ -50,7 +50,7 @@ class ClonePlugin(Plugin):
 	def execute(self) -> None:
 		logger = self.logger
 		board = self.board
-		
+
 		hierarchy = HierarchyParser(logger, board).parse()
 
 		selected_footprints: List[Footprint] = [
@@ -63,10 +63,19 @@ class ClonePlugin(Plugin):
 
 		instances = self.get_instances(hierarchy, selected_footprints)
 
-		settings_dialog = CloneSettingsDialog(logger, selected_footprints, instances)
+		settings_dialog = CloneSettingsDialog(
+			logger=logger,
+			footprints=selected_footprints,
+			instances=instances,
+			relations=hierarchy.relations,
+		)
 		if not settings_dialog.execute():
 			logger.error("Dialog rejected by user")
 			return
+
+		settings = settings_dialog.settings
+
+		instances = settings.instances
 
 		selected_items: List[pcbnew.EDA_ITEM] = \
 				self.filter_selected(board.Footprints()) + \

@@ -149,12 +149,13 @@ class HierarchyParser():
 			except KeyError:
 				logger.warn("Failed to match footprint to a symbol: %s (%s)", reference, path)
 				continue
-			footprint = Footprint(path=path, reference=reference, value=value, symbol=symbol)
+			footprint = Footprint(path=path, reference=reference, value=value, symbol=symbol, data=footprint)
 			if path in footprints:
 				raise self.fail("Duplicate footprint: %s", path)
 			footprints[path] = footprint
 
 	def parse(self) -> Hierarchy:
+		self.result = Hierarchy()
 		self.build_sheet_hierarchy()
 		self.read_symbols()
 		self.read_footprints()
