@@ -1,4 +1,4 @@
-from typing import Optional, final, Sequence, Iterator
+from typing import Optional, final, Sequence, Iterator, Tuple
 from dataclasses import dataclass
 from enum import Enum
 from abc import ABC, abstractmethod
@@ -55,16 +55,21 @@ class ClonePlacementSettings():
 	relative: ClonePlacementRelativeStrategySettings = ClonePlacementRelativeStrategySettings()
 	grid: ClonePlacementGridStrategySettings = ClonePlacementGridStrategySettings()
 
-	def get_selected_strategy(self) -> ClonePlacementStrategySettings:
+	def get_strategy(self, reference: Footprint, targets: Sequence[Footprint]) -> "ClonePlacementStrategy":
 		if self.strategy == ClonePlacementStrategyType.RELATIVE:
-			return self.relative
+			return ClonePlacementRelativeStrategy(targets)
 		elif self.strategy == ClonePlacementStrategyType.GRID:
-			return self.grid
+			return ClonePlacementGridStrategy(self.grid, reference, targets)
 		else:
-			raise ValueError()
+			raise ValueError(self.strategy)
 
 	def is_valid(self) -> bool:
-		return self.get_selected_strategy().is_valid()
+		if self.strategy == ClonePlacementStrategyType.RELATIVE:
+			return self.relative.is_valid()
+		elif self.strategy == ClonePlacementStrategyType.GRID:
+			return self.grid.is_valid()
+		else:
+			return False
 
 
 @final
@@ -84,19 +89,14 @@ class Placement():
 		)
 
 
-class ClonePlacementStrategy(ABC, Iterator[Placement]):
+PlacementResult = Tuple[Footprint, Placement]
+
+
+class ClonePlacementStrategy(ABC, Iterator[PlacementResult]):
 
 	@abstractmethod
-	def __next__(self) -> Placement:
+	def __next__(self) -> PlacementResult:
 		pass
-
-	def get(self, settings: ClonePlacementStrategySettings, reference: Footprint, targets: Sequence[Footprint]) -> "ClonePlacementStrategy":
-		if isinstance(settings, ClonePlacementRelativeStrategySettings):
-			return ClonePlacementRelativeStrategy(targets)
-		elif isinstance(settings, ClonePlacementGridStrategySettings):
-			return ClonePlacementGridStrategy(settings, reference, targets)
-		else:
-			raise TypeError(type(settings))
 
 
 @final
@@ -105,8 +105,10 @@ class ClonePlacementRelativeStrategy(ClonePlacementStrategy):
 	def __init__(self, targets: Sequence[Footprint]):
 		self.targets = targets.__iter__()
 
-	def __next__(self) -> Placement:
-		return Placement.from_footprint(next(self.targets))
+	def __next__(self) -> PlacementResult:
+		target = next(self.targets)
+		placement = Placement.from_footprint(target)
+		return target, placement
 
 
 @final
@@ -119,8 +121,8 @@ class ClonePlacementGridStrategy(ClonePlacementStrategy):
 		self.main: int = 0
 		self.cross: int = 0
 
-	def __next__(self) -> Placement:
-		next(self.targets)
+	def __next__(self) -> PlacementResult:
+		target = next(self.targets)
 		main, cross = self.main, self.cross
 		main = main + 1
 		if self.settings.wrap and main == self.settings.wrap_at:
@@ -135,8 +137,9 @@ class ClonePlacementGridStrategy(ClonePlacementStrategy):
 			dx, dy = dcross, dmain
 		else:
 			raise ValueError()
-		return Placement(
+		placement = Placement(
 			x=self.reference.x + dx,
 			y=self.reference.y + dy,
 			angle=self.reference.angle
 		)
+		return target, placement

@@ -12,10 +12,10 @@ import wx.xrc
 import wx.dataview
 
 ###########################################################################
-## Class CloneSettingsDialog
+## Class CloneSettingsDialogDesign
 ###########################################################################
 
-class CloneSettingsDialog ( wx.Dialog ):
+class CloneSettingsDialogDesign ( wx.Dialog ):
 
 	def __init__( self, parent ):
 		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"Clone settings", pos = wx.DefaultPosition, size = wx.Size( 800,600 ), style = wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER )

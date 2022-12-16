@@ -9,7 +9,7 @@ import pcbnew  # pyright: ignore
 
 from .multi_map import MultiMap
 from .kicad_sexp_parser import KicadSexpParser
-from .kicad_entities import Filename, Reference, UuidPath, SheetTemplate, SheetInstance, Symbol, Footprint
+from .kicad_entities import Filename, UuidPath, SheetTemplate, SheetInstance, Symbol, Footprint
 
 
 ROOT_UUID = UUID(bytes=b"\0" * 16)
@@ -26,6 +26,7 @@ class Hierarchy():
 
 	symbols: Dict[UuidPath, Symbol] = field(default_factory=lambda:{})
 	footprints: Dict[UuidPath, Footprint] = field(default_factory=lambda:{})
+	symbol_instances: MultiMap[Symbol, Footprint] = field(default_factory=lambda:MultiMap())
 
 
 class HierarchyParser():
@@ -139,6 +140,7 @@ class HierarchyParser():
 		logger = self.logger
 		symbols = self.result.symbols
 		footprints = self.result.footprints
+		symbol_instances = self.result.symbol_instances
 		logger.info("Parsing footprints")
 		for footprint in self.board.Footprints():
 			path = UuidPath.from_kiid_path(footprint.GetPath())
@@ -153,6 +155,7 @@ class HierarchyParser():
 			if path in footprints:
 				raise self.fail("Duplicate footprint: %s", path)
 			footprints[path] = footprint
+			symbol_instances[symbol] = footprint
 
 	def parse(self) -> Hierarchy:
 		self.result = Hierarchy()
