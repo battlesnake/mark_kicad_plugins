@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import pcbnew  # pyright: ignore
 
 from .kicad_entities import SheetInstance
-from .clone_placement import ClonePlacementSettings
+from .clone_placement_settings import ClonePlacementSettings
 
 
 @dataclass

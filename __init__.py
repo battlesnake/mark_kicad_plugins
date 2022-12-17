@@ -6,4 +6,4 @@ try:
 except Exception as error:
 	from .message_box import MessageBox
 	diagnostic = "".join(traceback.TracebackException.from_exception(error).format())
-	MessageBox("Mark's plugin framework: Error", diagnostic)
+	MessageBox.alert(diagnostic)

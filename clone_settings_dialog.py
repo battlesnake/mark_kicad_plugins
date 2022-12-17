@@ -12,8 +12,7 @@ from .multi_map import MultiMap
 from .list_box_adapter import StaticListBoxAdapter
 from .choice_adapter import StaticChoiceAdapter
 from .tree_control_branch_selection_adapter import TreeControlBranchSelectionAdapter
-from .clone_placement import ClonePlacementSettings, ClonePlacementStrategyType, ClonePlacementRelativeStrategySettings, ClonePlacementGridStrategySettings, ClonePlacementGridFlow
-
+from .clone_placement_settings import ClonePlacementSettings, ClonePlacementStrategyType, ClonePlacementRelativeStrategySettings, ClonePlacementGridStrategySettings, ClonePlacementGridFlow, ClonePlacementGridSort
 from .clone_settings import CloneSettings
 from .clone_settings_dialog_design import CloneSettingsDialogDesign
 
@@ -25,6 +24,7 @@ class CloneSettingsDialogDomain():
 	relations: MultiMap[SheetInstance, SheetInstance]
 
 
+@final
 class CloneSettingsDialog(CloneSettingsDialogDesign):
 
 	def __init__(
@@ -35,8 +35,8 @@ class CloneSettingsDialog(CloneSettingsDialogDesign):
 		relations: MultiMap[SheetInstance, SheetInstance],
 		settings: Optional[CloneSettings] = None
 	):
-		super().__init__(wx.FindWindowByName("PcbFrame"))
-		self.logger = logger
+		super().__init__(parent=wx.FindWindowByName("PcbFrame"))
+		self.logger = logger.getChild(self.__class__.__name__)
 		if not footprints:
 			raise ValueError("No footprints provided")
 		self.domain = CloneSettingsDialogDomain(
@@ -93,9 +93,25 @@ class CloneSettingsDialog(CloneSettingsDialogDesign):
 			selection=this.settings.placement.grid.flow,
 		)
 
-	def execute(self) -> bool:
+		@final
+		class GridSortAdapter(StaticChoiceAdapter[ClonePlacementGridSort]):
+			def get_caption(self, item: ClonePlacementGridSort) -> str: return item.value
+			def selection_changed(self): this.grid_sort_adapter_selection_changed()
+		self.grid_sort_adapter = GridSortAdapter(
+			control=self.grid_sort,
+			items=list(ClonePlacementGridSort),
+			selection=this.settings.placement.grid.sort,
+		)
+
+	def execute(self) -> Optional[CloneSettings]:
 		try:
-			return self.ShowModal() == wx.ID_OK
+			self.SetReturnCode(wx.ID_CANCEL)
+			result = self.ShowModal()
+			self.logger.info("Result: %s", result)
+			if result == wx.ID_OK:
+				return self.settings
+			else:
+				return None
 		finally:
 			self.Destroy()
 
@@ -110,13 +126,17 @@ class CloneSettingsDialog(CloneSettingsDialogDesign):
 		self.settings.placement.relative.anchor = self.relative_anchor_adapter.selection[0]
 		self.model_changed()
 
+	def grid_sort_adapter_selection_changed(self) -> None:
+		self.settings.placement.grid.sort = self.grid_sort_adapter.selection
+		self.model_changed()
+
 	def grid_flow_direction_adapter_selection_changed(self) -> None:
 		self.settings.placement.grid.flow = self.grid_flow_direction_adapter.selection
 		self.model_changed()
 
 	### Overrides
 
-	def instances_edit_veto( self, event ):
+	def instances_edit_veto(self, event):
 		event.Veto()
 
 	def instances_selection_toggle(self, event):
@@ -127,6 +147,9 @@ class CloneSettingsDialog(CloneSettingsDialogDesign):
 		self.model_changed()
 
 	def relative_anchor_changed(self, event):
+		pass  # Handled by adapter
+
+	def grid_sort_changed(self, event):
 		pass  # Handled by adapter
 
 	def grid_flow_direction_changed(self, event):
@@ -148,6 +171,8 @@ class CloneSettingsDialog(CloneSettingsDialogDesign):
 		self.settings.placement.grid.cross_interval = int(self.grid_cross_interval.GetValue(), SIZE_SCALE)
 		self.model_changed()
 
-	def ok_button_click(self, event):
-		self.SetReturnCode(wx.ID_OK)
-		self.Close()
+	def ok_button_clicked(self, event):
+		self.EndModal(wx.ID_OK)
+
+	def dialog_closed(self, event):
+		self.EndModal(wx.ID_CANCEL)

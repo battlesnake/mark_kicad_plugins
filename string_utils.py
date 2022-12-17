@@ -18,12 +18,11 @@ class StringUtils():
 	@staticmethod
 	def get_common_ancestor_of(items: Iterable[Sequence[T]]) -> Sequence[T]:
 		def reductor(a: Sequence[T], b: Sequence[T]) -> Sequence[T]:
-			result: List[T] = []
-			for index in range(0, min(len(a), len(b))):
+			min_len = min(len(a), len(b))
+			for index in range(0, min_len):
 				if a[index] != b[index]:
-					break
-				result.append(a[index])
-			return result
+					return a[0:index]
+			return a[0:min_len]
 		try:
 			return reduce(reductor, items)
 		except TypeError:

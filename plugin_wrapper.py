@@ -1,26 +1,26 @@
-from typing import Generic, final
+from typing import final, Optional, cast
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, asdict
+from dataclasses import asdict
 import logging
+from logging import Logger
 import sys
 import os
 import os.path
 
 import pcbnew  # pyright: ignore
 
-from .configuration import ConfigurationType, ConfigurationInitParams
-from .plugin import Plugin, PluginInitParams
+from .plugin import Plugin
 from .plugin_metadata import PluginMetadata
 
 
-class PluginWrapper(pcbnew.ActionPlugin, Generic[ConfigurationType]):
+class PluginWrapper(pcbnew.ActionPlugin, ABC):
 
+	def __init__(self, test_board: Optional[pcbnew.BOARD] = None):
+		super().__init__()
+		self.test_board = test_board
+	
 	@abstractmethod
-	def create_configuration(self, init_params: ConfigurationInitParams) -> ConfigurationType:
-		pass
-
-	@abstractmethod
-	def create_plugin(self, init_params: PluginInitParams) -> Plugin[ConfigurationType]:
+	def create_plugin(self, logger: Logger, board: pcbnew.BOARD) -> Plugin:
 		pass
 
 	@staticmethod
@@ -34,9 +34,11 @@ class PluginWrapper(pcbnew.ActionPlugin, Generic[ConfigurationType]):
 		self.name = metadata.name
 		self.description = metadata.description
 		self.category = metadata.category
-		self.icon = metadata.icon
+		self.icon_file_name = metadata.icon
+		self.dark_icon_file_name = metadata.icon
 		self.show_toolbar_button = metadata.show_toolbar_button
 
+	@final
 	def init_log_sink(self, path: str):
 		for handler in logging.root.handlers[:]:
 			logging.root.removeHandler(handler)
@@ -55,8 +57,10 @@ class PluginWrapper(pcbnew.ActionPlugin, Generic[ConfigurationType]):
 		try:
 
 			logger.info("Getting board")
-			board = pcbnew.GetBoard()
-			filename = os.path.abspath(board.GetFileName())
+			board = cast(Optional[pcbnew.BOARD], pcbnew.GetBoard()) if self.test_board is None else self.test_board
+			if board is None:
+				raise Exception("Failed to determine board")
+			filename = os.path.abspath(str(board.GetFileName()))
 
 			logger.info("Entering project directory")
 			os.chdir(os.path.dirname(filename))
@@ -71,14 +75,8 @@ class PluginWrapper(pcbnew.ActionPlugin, Generic[ConfigurationType]):
 			logger.info("Filename: %s", filename)
 			logger.info("Metadata: %s", asdict(self.get_metadata()))
 
-			logger.info("Creating configuration")
-			configuration = self.create_configuration(ConfigurationInitParams(logger=logger))
-
-			logger.info("Configuration: %s", asdict(configuration))
-
-			logger.info("Creating plugin instance")
-			plugin = self.create_plugin(PluginInitParams(logger=logger, board=board, configuration=configuration))
-
+			logger.info("Instantiating plugin")
+			plugin = self.create_plugin(logger, board)
 			logger.info("Plugin: %s", plugin.__class__.__name__)
 
 			logger.info("Executing plugin")

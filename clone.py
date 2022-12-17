@@ -1,26 +1,21 @@
-from dataclasses import dataclass
-from typing import List, TypeVar, Iterable, Optional
+from typing import List, TypeVar, Iterable, Optional, final
 
 import pcbnew  # pyright: ignore
 
 from .plugin import Plugin
 from .clone_settings import CloneSettings
 from .clone_settings_dialog import CloneSettingsDialog
-from .kicad_entities import  SheetInstance, Footprint, UuidPath
+from .kicad_entities import SheetInstance, Footprint, UuidPath
 from .hierarchy_parser import HierarchyParser
 from .string_utils import StringUtils
-from .clone_placement import Placement
+from .placement import Placement
+from .clone_placement_strategy import ClonePlacementStrategy
 
 
-@dataclass
-class ClonePluginConfiguration():
-
-	pass
+ItemType = TypeVar("ItemType", bound=pcbnew.BOARD_ITEM)
 
 
-ItemType = TypeVar("ItemType", bound=pcbnew.EDA_ITEM)
-
-
+@final
 class ClonePlugin(Plugin):
 
 	@staticmethod
@@ -41,7 +36,7 @@ class ClonePlugin(Plugin):
 			footprint.symbol.sheet_instance.uuid_chain
 			for footprint in footprints
 		)
-		common_ancestor_uuid_chain = UuidPath.from_parts(StringUtils.get_common_ancestor_of(footprint_sheet_uuid_chains))
+		common_ancestor_uuid_chain = UuidPath.of(StringUtils.get_common_ancestor_of(footprint_sheet_uuid_chains))
 		return hierarchy.instances[common_ancestor_uuid_chain]
 
 	def get_peers_and_parents(self, ancestor: SheetInstance) -> Iterable[SheetInstance]:
@@ -57,7 +52,7 @@ class ClonePlugin(Plugin):
 		board = self.board
 		hierarchy = self.hierarchy
 		return [
-			hierarchy.footprints[UuidPath.from_kiid_path(footprint.GetPath())]
+			hierarchy.footprints[UuidPath.of(footprint.GetPath())]
 			for footprint in self.filter_selected(board.Footprints())
 		]
 
@@ -68,9 +63,7 @@ class ClonePlugin(Plugin):
 			instances=instances,
 			relations=self.hierarchy.relations,
 		)
-		if not settings_dialog.execute():
-			return None
-		return settings_dialog.settings
+		return settings_dialog.execute()
 
 	def do_cloning(self) -> None:
 		logger = self.logger
@@ -79,52 +72,95 @@ class ClonePlugin(Plugin):
 		settings = self.settings
 		common_ancestor = self.common_ancestor
 
-		reference = settings.placement.relative.anchor
-		if reference is None:
+		self.logger.info("Common ancestor sheet of all selected footprints: %s", common_ancestor.name_path)
+
+		source_reference = settings.placement.relative.anchor
+		if source_reference is None:
 			raise ValueError("No reference/anchor selected")
+		self.logger.info("Source reference: %s (%s)", source_reference.reference, source_reference.symbol.sheet_instance.name_path)
+
+		selected_instances = settings.instances
+		for instance in selected_instances:
+			self.logger.info("Targets sheet: %s", instance.name_path)
+		selected_instance_paths = {
+			instance.uuid_chain
+			for instance in selected_instances
+		}
 
 		targets = [
 			footprint
-			for footprint in hierarchy.symbol_instances[reference.symbol]
-			if footprint != reference
+			for footprint in hierarchy.symbol_instances[source_reference.symbol]
+			if footprint != source_reference
+			if footprint.path[:-1] in selected_instance_paths
 		]
-		# TODO filter by sheet instances selected in settings
+		for target in targets:
+			self.logger.info("Targets: %s", target.reference)
 
-		instances = settings.instances
+		source_reference_placement = Placement.of(source_reference.data)
 
-		reference_placement = Placement.from_footprint(reference)
-
-		placement_strategy = settings.placement.get_strategy(
-			reference=reference,
+		placement_strategy = ClonePlacementStrategy.get(
+			settings=settings.placement,
+			reference=source_reference,
 			targets=targets
 		)
 
-		# TODO: Option to clear target placement area so we never create
+		source_footprints = self.filter_selected(board.Footprints())
+		source_tracks = self.filter_selected(board.Tracks())
+		source_drawings = self.filter_selected(board.Drawings())
+		source_zones = self.filter_selected(board.Zones())
+
+		# TODO: Option to clear target placement areas so we never create
 		# overlaps
 
-		for anchor, placement in placement_strategy:
-			for source_footprint in self.filter_selected(board.Footprints()):
+		for target_reference, target_reference_placement in placement_strategy:
+			self.logger.info("Rendering target subcircuit around %s", target_reference.reference)
+			for source_footprint in source_footprints:
 				# 1. get footprint path (sheet/sheet/.../footprint)
 				# 2. replace footprint (last) part of reference footprint path with this footprint's path uuid
 				# 3. resolve footprint from path
 				# 4. apply placement
-				source_path = UuidPath.from_kiid_path(source_footprint.GetPath())
-				anchor_path = anchor.path
-				target_path = UuidPath(list(anchor_path.value[:-1]) + [source_path.value[-1]])
+				source_path = UuidPath.of(source_footprint.GetPath())
+				target_reference_path = target_reference.path
+				target_path = target_reference_path[:-1] + source_path[-1]
+				source_footprint = hierarchy.footprints[source_path]
 				target_footprint = hierarchy.footprints[target_path]
-				pass
-			for source_track in self.filter_selected(board.Tracks()):
-				# 1. Duplicate the track
-				# 2. Apply placement
-				pass
-			for source_drawing in self.filter_selected(board.Drawings()):
-				# 1. Duplicate the drawing
-				# 2. Apply placement
-				pass
-			for source_zone in self.filter_selected(board.Zones()):
-				# 1. Duplicate the zone
-				# 2. Apply placement
-				pass
+				logger.debug(f"Matched source %s to target %s", source_footprint, target_footprint)
+				# Apply placement
+				placement_strategy.apply_placement(
+					source_reference=source_reference_placement,
+					target_reference=target_reference_placement,
+					source_item=source_footprint.data,
+					target_item=target_footprint.data,
+				)
+			for source_track in source_tracks:
+				placement_strategy.apply_placement(
+					source_reference=source_reference_placement,
+					target_reference=target_reference_placement,
+					source_item=source_track,
+				)
+			for source_drawing in source_drawings:
+				placement_strategy.apply_placement(
+					source_reference=source_reference_placement,
+					target_reference=target_reference_placement,
+					source_item=source_drawing,
+				)
+			for source_zone in source_zones:
+				placement_strategy.apply_placement(
+					source_reference=source_reference_placement,
+					target_reference=target_reference_placement,
+					source_item=source_zone,
+				)
+
+		pcbnew.Refresh()
+
+		from .message_box import MessageBox
+		MessageBox.alert("will undo after")
+
+		change_log = placement_strategy.change_log
+
+		change_log.undo()
+
+		pcbnew.Refresh()
 
 	def execute(self) -> None:
 		logger = self.logger
@@ -142,7 +178,8 @@ class ClonePlugin(Plugin):
 
 		instances = self.get_peers_and_parents(self.common_ancestor)
 
-		if (settings := self.get_settings(selected_footprints, instances)) is None:
+		settings = self.get_settings(selected_footprints, instances)
+		if settings is None:
 			logger.error("Dialog rejected by user")
 			return
 		self.settings = settings

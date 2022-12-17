@@ -15,7 +15,7 @@ from .kicad_entities import Filename, UuidPath, SheetTemplate, SheetInstance, Sy
 ROOT_UUID = UUID(bytes=b"\0" * 16)
 
 
-@dataclass
+@dataclass(repr=False)
 class Hierarchy():
 
 	templates: Dict[Filename, SheetTemplate] = field(default_factory=lambda:{})
@@ -24,7 +24,7 @@ class Hierarchy():
 	relations: MultiMap[SheetInstance, SheetInstance] = field(default_factory=lambda:MultiMap())
 	root: SheetInstance = field(default_factory=lambda:cast(SheetInstance, None))
 
-	symbols: Dict[UuidPath, Symbol] = field(default_factory=lambda:{})
+	symbols: Dict[UUID, Symbol] = field(default_factory=lambda:{})
 	footprints: Dict[UuidPath, Footprint] = field(default_factory=lambda:{})
 	symbol_instances: MultiMap[Symbol, Footprint] = field(default_factory=lambda:MultiMap())
 
@@ -36,9 +36,9 @@ class HierarchyParser():
 
 	result: Hierarchy
 
-	def __init__(self, logger: Logger, board: Optional[pcbnew.BOARD] = None):
-		self.logger = logger
-		self.board = pcbnew.GetBoard() if board is None else board
+	def __init__(self, logger: Logger, board: pcbnew.BOARD):
+		self.logger = logger.getChild(self.__class__.__name__)
+		self.board = board
 
 	def fail(self, message, *args):
 		self.logger.error(message, *args)
@@ -121,12 +121,12 @@ class HierarchyParser():
 		symbols = self.result.symbols
 		logger.info("Parsing symbols")
 		for symbol_instance in self.root.template.root_node.kicad_sch.symbol_instances["path"]:
-			path = UuidPath.from_str(symbol_instance.values[0])
+			path = UuidPath.of(symbol_instance.values[0])
 			reference = symbol_instance.reference.values[0]
 			unit = int(symbol_instance.unit.values[0])
 			value = symbol_instance.value.values[0]
-			uuid = path.value[-1]
-			sheet_instance_uuid = UuidPath.from_parts(path.value[:-1])
+			uuid = path[-1]
+			sheet_instance_uuid = path[:-1]
 			try:
 				sheet_instance = instances[sheet_instance_uuid]
 			except KeyError:
@@ -134,7 +134,7 @@ class HierarchyParser():
 			symbol = Symbol(path=path, uuid=uuid, reference=reference, unit=unit, value=value, sheet_instance=sheet_instance)
 			if path in footprints:
 				raise self.fail("Duplicate symbol: %s", path)
-			symbols[path] = symbol
+			symbols[uuid] = symbol
 
 	def read_footprints(self) -> None:
 		logger = self.logger
@@ -143,11 +143,11 @@ class HierarchyParser():
 		symbol_instances = self.result.symbol_instances
 		logger.info("Parsing footprints")
 		for footprint in self.board.Footprints():
-			path = UuidPath.from_kiid_path(footprint.GetPath())
+			path = UuidPath.of(footprint.GetPath())
 			reference = str(footprint.GetReference())
 			value = str(footprint.GetValue())
 			try:
-				symbol = symbols[path]
+				symbol = symbols[path[-1]]
 			except KeyError:
 				logger.warn("Failed to match footprint to a symbol: %s (%s)", reference, path)
 				continue

@@ -1,3 +1,4 @@
+from typing import final, cast
 from dataclasses import dataclass
 import functools
 
@@ -57,7 +58,10 @@ class TextPluginConfiguration():
 	angle_scale: int = 10
 
 
+@final
 class TextPlugin(Plugin):
+
+	configuration = TextPluginConfiguration()
 
 	def calc_length(self, value: float) -> int:
 		return int(self.configuration.size_scale * value)
@@ -68,12 +72,12 @@ class TextPlugin(Plugin):
 	@functools.cache
 	def find_or_create_layer(self, layer_configuration: LayerConfiguration) -> int:
 		layer_name = layer_configuration.name
-		layer_id = self.board.GetLayerID(layer_name)
+		layer_id = self.board.GetLayerID(cast(pcbnew.wxString, layer_name))
 		if layer_id == -1:
 			raise ValueError(f"Layer \"{layer_name}\" not found in board, and I haven't implemented automatic setup of layers yet")
 		return layer_id
 
-	def process_text(self, text: pcbnew.PCB_TEXT, text_configuration: TextConfiguration) -> None:
+	def process_text(self, text: pcbnew.FP_TEXT, text_configuration: TextConfiguration) -> None:
 		footprint = text.GetParentFootprint().Cast()
 
 		text.SetLayer(self.find_or_create_layer(text_configuration.layer))

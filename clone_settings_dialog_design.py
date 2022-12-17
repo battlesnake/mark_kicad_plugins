@@ -63,12 +63,22 @@ class CloneSettingsDialogDesign ( wx.Dialog ):
 		self.position_strategy_relative.SetSizer( position_strategy_relative_sizer )
 		self.position_strategy_relative.Layout()
 		position_strategy_relative_sizer.Fit( self.position_strategy_relative )
-		self.position_strategy.AddPage( self.position_strategy_relative, u"Relative", True )
+		self.position_strategy.AddPage( self.position_strategy_relative, u"Relative", False )
 		self.position_strategy_grid = wx.Panel( self.position_strategy, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.TAB_TRAVERSAL )
 		position_strategy_grid_sizer = wx.FlexGridSizer( 0, 2, 0, 10 )
 		position_strategy_grid_sizer.AddGrowableCol( 1 )
 		position_strategy_grid_sizer.SetFlexibleDirection( wx.BOTH )
 		position_strategy_grid_sizer.SetNonFlexibleGrowMode( wx.FLEX_GROWMODE_SPECIFIED )
+
+		self.grid_sort_label = wx.StaticText( self.position_strategy_grid, wx.ID_ANY, u"Sort by", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.grid_sort_label.Wrap( -1 )
+
+		position_strategy_grid_sizer.Add( self.grid_sort_label, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.ALL, 5 )
+
+		grid_sortChoices = [ u"Reference", u"Hierarchy" ]
+		self.grid_sort = wx.Choice( self.position_strategy_grid, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, grid_sortChoices, 0 )
+		self.grid_sort.SetSelection( 0 )
+		position_strategy_grid_sizer.Add( self.grid_sort, 0, wx.ALL, 5 )
 
 		self.grid_flow_direction_label = wx.StaticText( self.position_strategy_grid, wx.ID_ANY, u"Flow direction", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.grid_flow_direction_label.Wrap( -1 )
@@ -118,7 +128,7 @@ class CloneSettingsDialogDesign ( wx.Dialog ):
 		self.position_strategy_grid.SetSizer( position_strategy_grid_sizer )
 		self.position_strategy_grid.Layout()
 		position_strategy_grid_sizer.Fit( self.position_strategy_grid )
-		self.position_strategy.AddPage( self.position_strategy_grid, u"Grid", False )
+		self.position_strategy.AddPage( self.position_strategy_grid, u"Grid", True )
 
 		position_strategy_box_sizer.Add( self.position_strategy, 1, wx.EXPAND |wx.ALL, 5 )
 
@@ -129,6 +139,8 @@ class CloneSettingsDialogDesign ( wx.Dialog ):
 		rows_0_sizer.Add( columns_1_sizer, 1, wx.EXPAND, 5 )
 
 		self.ok_button = wx.Button( self, wx.ID_ANY, u"Clone", wx.DefaultPosition, wx.DefaultSize, 0 )
+
+		self.ok_button.SetDefault()
 		rows_0_sizer.Add( self.ok_button, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
 
 
@@ -138,22 +150,27 @@ class CloneSettingsDialogDesign ( wx.Dialog ):
 		self.Centre( wx.BOTH )
 
 		# Connect Events
+		self.Bind( wx.EVT_CLOSE, self.dialog_closed )
 		self.instances.Bind( wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED, self.instances_selection_toggle, id = wx.ID_ANY )
 		self.instances.Bind( wx.dataview.EVT_DATAVIEW_ITEM_START_EDITING, self.instances_edit_veto, id = wx.ID_ANY )
 		self.position_strategy.Bind( wx.EVT_NOTEBOOK_PAGE_CHANGED, self.position_strategy_changed )
 		self.relative_anchor.Bind( wx.EVT_LISTBOX, self.relative_anchor_changed )
+		self.grid_sort.Bind( wx.EVT_CHOICE, self.grid_sort_changed )
 		self.grid_flow_direction.Bind( wx.EVT_CHOICE, self.grid_flow_direction_changed )
 		self.grid_wrap.Bind( wx.EVT_CHECKBOX, self.grid_wrap_changed )
 		self.grid_wrap_at.Bind( wx.EVT_SPINCTRL, self.grid_wrap_at_changed )
 		self.grid_main_interval.Bind( wx.EVT_SPINCTRLDOUBLE, self.grid_main_interval_changed )
 		self.grid_cross_interval.Bind( wx.EVT_SPINCTRLDOUBLE, self.grid_cross_interval_changed )
-		self.ok_button.Bind( wx.EVT_BUTTON, self.ok_button_click )
+		self.ok_button.Bind( wx.EVT_BUTTON, self.ok_button_clicked )
 
 	def __del__( self ):
 		pass
 
 
 	# Virtual event handlers, override them in your derived class
+	def dialog_closed( self, event ):
+		pass
+
 	def instances_selection_toggle( self, event ):
 		pass
 
@@ -164,6 +181,9 @@ class CloneSettingsDialogDesign ( wx.Dialog ):
 		pass
 
 	def relative_anchor_changed( self, event ):
+		pass
+
+	def grid_sort_changed( self, event ):
 		pass
 
 	def grid_flow_direction_changed( self, event ):
@@ -181,7 +201,7 @@ class CloneSettingsDialogDesign ( wx.Dialog ):
 	def grid_cross_interval_changed( self, event ):
 		pass
 
-	def ok_button_click( self, event ):
+	def ok_button_clicked( self, event ):
 		pass
 
 

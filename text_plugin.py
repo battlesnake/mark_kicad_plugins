@@ -1,15 +1,19 @@
+from typing import final, Type
+from logging import Logger
+
+import pcbnew  # pyright: ignore
+
+from .plugin import Plugin
 from .plugin_wrapper import PluginWrapper
 from .plugin_metadata import PluginMetadata
-from .text import TextPlugin, TextPluginConfiguration
+from .text import TextPlugin
 
 
-class TextPluginWrapper(PluginWrapper[TextPluginConfiguration]):
+@final
+class TextPluginWrapper(PluginWrapper):
 
-	def create_configuration(self, init_params):
-		return TextPluginConfiguration()
-
-	def create_plugin(self, init_params):
-		return TextPlugin(init_params)
+	def create_plugin(self, logger: Logger, board: pcbnew.BOARD) -> Plugin:
+		return TextPlugin(logger, board)
 
 	@staticmethod
 	def get_metadata():
