@@ -29,5 +29,3 @@ There's no configuration dialog to edit the plugin config, because I can't be
 arsed wasting time fighting with the disappointing mess that is text-format
 (e.g. YAML/JSON/XML) serialisation in Python, combined with 3rd-party
 dependency issues relating to how Kicad provides its own Python environment.
-GUI development in Python is also a stone-age pain in the arse compared to the
-likes of Delphi or C# 10-20 years ago.

@@ -37,7 +37,7 @@ class HierarchyParser():
 	result: Hierarchy
 
 	def __init__(self, logger: Logger, board: pcbnew.BOARD):
-		self.logger = logger.getChild(self.__class__.__name__)
+		self.logger = logger.getChild(type(self).__name__)
 		self.board = board
 
 	def fail(self, message: str, *args: Any):

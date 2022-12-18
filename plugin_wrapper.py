@@ -43,7 +43,7 @@ class PluginWrapper(pcbnew.ActionPlugin, ABC):
 		for handler in logging.root.handlers[:]:
 			logging.root.removeHandler(handler)
 		logging.basicConfig(level=logging.DEBUG,
-			filename=os.path.join(path, f"plugin-{self.__class__.__name__}.log"),
+			filename=os.path.join(path, f"plugin-{type(self).__name__}.log"),
 			filemode="w",
 			format="%(asctime)s %(name)s %(lineno)d:%(message)s",
 			datefmt="%Y-%m-%d %H:%M:%S"
@@ -52,7 +52,7 @@ class PluginWrapper(pcbnew.ActionPlugin, ABC):
 	@final
 	def Run(self) -> None:
 
-		logger = logging.getLogger(self.__class__.__name__)
+		logger = logging.getLogger(type(self).__name__)
 
 		try:
 

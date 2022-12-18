@@ -12,7 +12,7 @@ class HierarchyLogger():
 	uuidmap: Dict[UUID, str] = {}
 
 	def __init__(self, logger: Logger):
-		self.logger = logger.getChild(self.__class__.__name__)
+		self.logger = logger.getChild(type(self).__name__)
 
 	def map_uuid(self, uuid: UUID) -> str:
 		if uuid in self.uuidmap:

@@ -21,15 +21,13 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 	def __init__(
 		self,
 		items: Iterable[ValueType],
-		relations: MultiMap[ValueType, ValueType],
+		get_parent: Callable[[ValueType], ValueType | None],
 		control: wx.dataview.DataViewTreeCtrl,
 		selection: Iterable[ValueType],
 	):
 		self.items = set(items)
-		self.relations = relations.copy()
 		self.control = control
 		self.selection = set(selection)
-		self.parents = self.relations.invert()
 		self.view_map: Dict[ValueType, wx.dataview.DataViewItem] = {}
 		self.icons: Dict[TreeItemSelectionState, str] = {
 			TreeItemSelectionState.SELECTED: "●",
@@ -37,7 +35,22 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 			TreeItemSelectionState.PARTIAL_SELECTED: "◐",
 		}
 		control.Bind(wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED, self.on_item_activated)
+
+		self.relations = MultiMap[ValueType, ValueType]()
+		queue: List[ValueType] = list(items)
+		while queue:
+			item = queue.pop()
+			parent = get_parent(item)
+			if parent is not None:
+				self.relations[parent] = item
+				if parent not in self.items:
+					self.items.add(parent)
+					queue.append(parent)
+		self.parents = self.relations.invert()
+
 		self.create_view_tree()
+
+	###
 
 	def get_view_text(self, item: ValueType) -> str:
 		return str(item)
@@ -57,12 +70,6 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 				if predicate(item):
 					result.add(item)
 				queue.update(walker(item))
-		# Ensure result only contains items that are in out item-list.
-		# The relations structure may contain items that were filtered out from
-		# the list of items we were asked to display.
-		# Filtering here also means that branches who's children are all hidden
-		# (i.e. removed from items list) will not be considered to be leaves.
-		result.intersection_update(self.items)
 		return result
 
 	def is_leaf(self, item: ValueType) -> bool:

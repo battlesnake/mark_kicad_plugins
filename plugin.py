@@ -7,7 +7,7 @@ import pcbnew  # pyright: ignore
 class Plugin(ABC):
 
 	def __init__(self, logger: Logger, board: pcbnew.BOARD):
-		self.logger = logger.getChild(self.__class__.__name__)
+		self.logger = logger.getChild(type(self).__name__)
 		self.board = board
 
 	@abstractmethod

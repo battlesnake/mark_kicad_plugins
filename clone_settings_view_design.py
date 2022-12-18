@@ -12,13 +12,13 @@ import wx.xrc
 import wx.dataview
 
 ###########################################################################
-## Class CloneSettingsDialogDesign
+## Class CloneSettingsViewDesign
 ###########################################################################
 
-class CloneSettingsDialogDesign ( wx.Dialog ):
+class CloneSettingsViewDesign ( wx.Frame ):
 
 	def __init__( self, parent ):
-		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"Clone settings", pos = wx.DefaultPosition, size = wx.Size( 800,600 ), style = wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER )
+		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = wx.EmptyString, pos = wx.DefaultPosition, size = wx.Size( 800,560 ), style = wx.CAPTION|wx.CLOSE_BOX|wx.FRAME_FLOAT_ON_PARENT|wx.FRAME_NO_TASKBAR|wx.FRAME_TOOL_WINDOW|wx.RESIZE_BORDER|wx.SYSTEM_MENU|wx.TAB_TRAVERSAL )
 
 		self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
 
@@ -138,10 +138,34 @@ class CloneSettingsDialogDesign ( wx.Dialog ):
 
 		rows_0_sizer.Add( columns_1_sizer, 1, wx.EXPAND, 5 )
 
+		buttons_sizer = wx.FlexGridSizer( 0, 6, 0, 0 )
+		buttons_sizer.AddGrowableCol( 1 )
+		buttons_sizer.AddGrowableCol( 4 )
+		buttons_sizer.SetFlexibleDirection( wx.HORIZONTAL )
+		buttons_sizer.SetNonFlexibleGrowMode( wx.FLEX_GROWMODE_NONE )
+
+		self.undo_button = wx.Button( self, wx.ID_ANY, u"Undo", wx.DefaultPosition, wx.DefaultSize, 0 )
+		buttons_sizer.Add( self.undo_button, 0, wx.ALL, 5 )
+
+
+		buttons_sizer.Add( ( 0, 0), 1, wx.EXPAND, 5 )
+
 		self.ok_button = wx.Button( self, wx.ID_ANY, u"Clone", wx.DefaultPosition, wx.DefaultSize, 0 )
 
 		self.ok_button.SetDefault()
-		rows_0_sizer.Add( self.ok_button, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
+		buttons_sizer.Add( self.ok_button, 0, wx.ALL, 5 )
+
+		self.preview_button = wx.Button( self, wx.ID_ANY, u"Preview", wx.DefaultPosition, wx.DefaultSize, 0 )
+		buttons_sizer.Add( self.preview_button, 0, wx.ALL, 5 )
+
+
+		buttons_sizer.Add( ( 0, 0), 1, wx.EXPAND, 5 )
+
+		self.cancel_button = wx.Button( self, wx.ID_ANY, u"Cancel", wx.DefaultPosition, wx.DefaultSize, 0 )
+		buttons_sizer.Add( self.cancel_button, 0, wx.ALL, 5 )
+
+
+		rows_0_sizer.Add( buttons_sizer, 0, wx.EXPAND, 5 )
 
 
 		self.SetSizer( rows_0_sizer )
@@ -161,7 +185,10 @@ class CloneSettingsDialogDesign ( wx.Dialog ):
 		self.grid_wrap_at.Bind( wx.EVT_SPINCTRL, self.grid_wrap_at_changed )
 		self.grid_main_interval.Bind( wx.EVT_SPINCTRLDOUBLE, self.grid_main_interval_changed )
 		self.grid_cross_interval.Bind( wx.EVT_SPINCTRLDOUBLE, self.grid_cross_interval_changed )
+		self.undo_button.Bind( wx.EVT_BUTTON, self.undo_button_clicked )
 		self.ok_button.Bind( wx.EVT_BUTTON, self.ok_button_clicked )
+		self.preview_button.Bind( wx.EVT_BUTTON, self.preview_button_clicked )
+		self.cancel_button.Bind( wx.EVT_BUTTON, self.cancel_button_clicked )
 
 	def __del__( self ):
 		pass
@@ -201,7 +228,16 @@ class CloneSettingsDialogDesign ( wx.Dialog ):
 	def grid_cross_interval_changed( self, event ):
 		pass
 
+	def undo_button_clicked( self, event ):
+		pass
+
 	def ok_button_clicked( self, event ):
+		pass
+
+	def preview_button_clicked( self, event ):
+		pass
+
+	def cancel_button_clicked( self, event ):
 		pass
 
 

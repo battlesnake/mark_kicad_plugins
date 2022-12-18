@@ -1,6 +1,7 @@
-from typing import Optional, Iterable, List, final
+from typing import Optional, List, final, cast
 from dataclasses import dataclass
 from logging import Logger
+from abc import ABC, abstractmethod
 
 import wx
 import wx.dataview
@@ -8,42 +9,63 @@ import wx.dataview
 import pcbnew  # pyright: ignore
 
 from .kicad_entities import SheetInstance, Footprint, SIZE_SCALE
-from .multi_map import MultiMap
 from .list_box_adapter import StaticListBoxAdapter
 from .choice_adapter import StaticChoiceAdapter
 from .tree_control_branch_selection_adapter import TreeControlBranchSelectionAdapter
 from .clone_placement_settings import ClonePlacementSettings, ClonePlacementStrategyType, ClonePlacementRelativeStrategySettings, ClonePlacementGridStrategySettings, ClonePlacementGridFlow, ClonePlacementGridSort
 from .clone_settings import CloneSettings
-from .clone_settings_dialog_design import CloneSettingsDialogDesign
+from .clone_settings_view_design import CloneSettingsViewDesign
 
 
 @dataclass
-class CloneSettingsDialogDomain():
+class CloneSettingsViewDomain():
 	instances: List[SheetInstance]
 	footprints: List[Footprint]
-	relations: MultiMap[SheetInstance, SheetInstance]
+
+
+class CloneSettingsController(ABC):
+
+	@abstractmethod
+	def has_preview(self) -> bool:
+		pass
+
+	@abstractmethod
+	def apply_preview(self, settings: CloneSettings) -> None:
+		pass
+
+	@abstractmethod
+	def clear_preview(self) -> None:
+		pass
+
+	@abstractmethod
+	def can_undo(self) -> bool:
+		pass
+
+	@abstractmethod
+	def apply(self, settings: CloneSettings) -> None:
+		pass
+
+	@abstractmethod
+	def undo(self) -> None:
+		pass
 
 
 @final
-class CloneSettingsDialog(CloneSettingsDialogDesign):
+class CloneSettingsView(CloneSettingsViewDesign):
 
 	def __init__(
 		self,
 		logger: Logger,
-		footprints: Iterable[Footprint],
-		instances: Iterable[SheetInstance],
-		relations: MultiMap[SheetInstance, SheetInstance],
+		domain: CloneSettingsViewDomain,
+		controller: CloneSettingsController,
 		settings: Optional[CloneSettings] = None
 	):
 		super().__init__(parent=wx.FindWindowByName("PcbFrame"))
-		self.logger = logger.getChild(self.__class__.__name__)
-		if not footprints:
+		self.logger = logger.getChild(cast(str, type(self).__name__))
+		self.controller = controller
+		if not domain.footprints:
 			raise ValueError("No footprints provided")
-		self.domain = CloneSettingsDialogDomain(
-			instances=sorted(instances, key=lambda instance: instance.name_path),
-			footprints=sorted(footprints, key=lambda footprint: footprint.reference),
-			relations=relations,
-		)
+		self.domain = domain
 		if settings is None:
 			settings = CloneSettings(
 				instances=set(self.domain.instances),
@@ -69,7 +91,7 @@ class CloneSettingsDialog(CloneSettingsDialogDesign):
 			def selection_changed(self): this.instances_adapter_selection_changed()
 		self.instances_adapter = InstancesAdapter(
 			items=self.domain.instances,
-			relations=self.domain.relations,
+			get_parent=lambda item: item.parent,
 			control=self.instances,
 			selection=self.settings.instances,
 		)
@@ -104,19 +126,16 @@ class CloneSettingsDialog(CloneSettingsDialogDesign):
 		)
 
 	def execute(self) -> Optional[CloneSettings]:
-		try:
-			self.SetReturnCode(wx.ID_CANCEL)
-			result = self.ShowModal()
-			self.logger.info("Result: %s", result)
-			if result == wx.ID_OK:
-				return self.settings
-			else:
-				return None
-		finally:
-			self.Destroy()
+		self.model_changed()
+		self.Show()
 
 	def model_changed(self) -> None:
-		self.ok_button.Enable(self.settings.is_valid())
+		valid = self.settings.is_valid()
+		self.ok_button.Enable(valid)
+		self.preview_button.Enable(valid)
+		if not valid and self.controller.has_preview():
+			self.controller.clear_preview()
+		self.undo_button.Enable(self.controller.can_undo())
 
 	def instances_adapter_selection_changed(self) -> None:
 		self.settings.instances = self.instances_adapter.selection
@@ -171,8 +190,30 @@ class CloneSettingsDialog(CloneSettingsDialogDesign):
 		self.settings.placement.grid.cross_interval = int(self.grid_cross_interval.GetValue() * SIZE_SCALE)
 		self.model_changed()
 
+	def preview_button_clicked(self, event: wx.Event):
+		self.logger.info("Preview button pressed")
+		self.controller.apply_preview(self.settings)
+		self.model_changed()
+
+	def undo_button_clicked(self, event: wx.Event):
+		self.logger.info("Undo button pressed")
+		self.controller.undo()
+		self.model_changed()
+
 	def ok_button_clicked(self, event: wx.Event):
-		self.EndModal(wx.ID_OK)
+		self.logger.info("Ok button pressed")
+		self.controller.apply(self.settings)
+		self.model_changed()
+		self.Hide()
+
+	def cancel_button_clicked(self, event: wx.Event):
+		self.logger.info("Cancel button pressed")
+		self.controller.clear_preview()
+		self.model_changed()
+		self.Hide()
 
 	def dialog_closed(self, event: wx.Event):
-		self.EndModal(wx.ID_CANCEL)
+		self.logger.info("Dialog closed")
+		self.controller.clear_preview()
+		self.model_changed()
+		self.Hide()
