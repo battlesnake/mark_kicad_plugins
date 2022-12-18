@@ -1,4 +1,4 @@
-from typing import Optional, final, Sequence
+from typing import Optional, final
 from dataclasses import dataclass
 from enum import Enum
 from abc import ABC, abstractmethod

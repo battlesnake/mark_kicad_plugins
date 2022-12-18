@@ -49,8 +49,8 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 	###
 
 	def get_recursively(self, start: Iterable[ValueType], walker: Callable[[ValueType], Iterable[ValueType]]) -> Set[ValueType]:
-		result = set()
-		todo_next = set(start)
+		result: Set[ValueType] = set()
+		todo_next: Set[ValueType] = set(start)
 		while todo_next:
 			todo = todo_next
 			todo_next = set()
@@ -109,6 +109,7 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 			]
 			self.control.DeleteChildren(view_start)
 		for model_item in items:
+			view_item: wx.dataview.DataViewItem
 			if model_item in self.relations:
 				view_item = self.control.AppendContainer(
 					parent=view_start,
@@ -138,7 +139,7 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 		for item in to_update:
 			self.update_view_item(item)
 
-	def on_item_activated(self, event):
+	def on_item_activated(self, event: wx.Event):
 		items: List[ValueType] = [
 			self.control.GetItemData(selection)
 			for selection in self.control.GetSelections()

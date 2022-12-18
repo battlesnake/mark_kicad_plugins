@@ -78,7 +78,7 @@ class TextPlugin(Plugin):
 		return layer_id
 
 	def process_text(self, text: pcbnew.FP_TEXT, text_configuration: TextConfiguration) -> None:
-		footprint = text.GetParentFootprint().Cast()
+		footprint = cast(pcbnew.FOOTPRINT, text.GetParentFootprint().Cast())
 
 		text.SetLayer(self.find_or_create_layer(text_configuration.layer))
 
@@ -90,7 +90,7 @@ class TextPlugin(Plugin):
 		text.SetTextHeight(self.calc_length(text_configuration.height))
 		text.SetTextThickness(self.calc_length(text_configuration.thickness))
 
-		angle = self.calc_angle(text_configuration.angle)
+		angle: int = self.calc_angle(text_configuration.angle)
 		if text_configuration.angle_is_absolute:
 			angle -= footprint.GetOrientation()
 		text.SetTextAngle(angle)
@@ -98,14 +98,14 @@ class TextPlugin(Plugin):
 		text.SetBold(text_configuration.bold)
 		text.SetItalic(text_configuration.italic)
 
-		parent_box = footprint.GetBoundingBox(False, False)
+		parent_box: pcbnew.EDA_RECT = footprint.GetBoundingBox(False, False)
 		anchor = text_configuration.anchor.value
 		anchor_pt = LinearInterpolate.rectangle(parent_box, anchor)
 		anchor_pt.x += LinearInterpolate.space(self.calc_length(text_configuration.spacing.x), anchor.x)
 		anchor_pt.y += LinearInterpolate.space(self.calc_length(text_configuration.spacing.y), anchor.y)
 		text.SetPosition(pcbnew.wxPoint(
-			anchor_pt.x,
-			anchor_pt.y
+			int(anchor_pt.x),
+			int(anchor_pt.y)
 		))
 
 	def process_footprint(self, footprint: pcbnew.FOOTPRINT) -> None:

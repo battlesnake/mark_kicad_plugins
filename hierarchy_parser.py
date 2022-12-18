@@ -1,4 +1,4 @@
-from typing import Optional, Dict, cast
+from typing import Dict, cast, Any
 from dataclasses import dataclass, field
 from logging import Logger
 from uuid import UUID
@@ -40,7 +40,7 @@ class HierarchyParser():
 		self.logger = logger.getChild(self.__class__.__name__)
 		self.board = board
 
-	def fail(self, message, *args):
+	def fail(self, message: str, *args: Any):
 		self.logger.error(message, *args)
 		return Exception("Hierarchy parser failed", message, *args)
 

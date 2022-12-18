@@ -70,7 +70,7 @@ class ClonePlacementStrategy(ABC, Iterator[PlacementResult]):
 			flipped_angle = copysign(180 - abs(source_angle), source_angle)
 			rotation = 180 - flipped_angle - target_reference.angle
 		rotation += target_reference.angle - source_reference.angle
-		target_item.Rotate(target_reference.position, rotation * ROTATION_SCALE)
+		target_item.Rotate(target_reference.position, int(rotation * ROTATION_SCALE))
 		source_item.GetBoard().Add(target_item)
 
 	@staticmethod
@@ -109,9 +109,9 @@ class ClonePlacementStrategy(ABC, Iterator[PlacementResult]):
 			target_item = cast(ItemType, source_item.Duplicate())
 			self.change_log.created_items.append(target_item)
 			return ClonePlacementStrategy.internal_apply_placement(source_reference, target_reference, source_item, target_item)
-		elif isinstance(target_item, pcbnew.FOOTPRINT):
+		elif isinstance(target_item, pcbnew.FOOTPRINT) and isinstance(source_item, pcbnew.FOOTPRINT):
 			self.change_log.original_placements.append((target_item, Placement.of(target_item)))
-			ClonePlacementStrategy.internal_transfer_footprint_placement(cast(pcbnew.FOOTPRINT, source_item), cast(pcbnew.FOOTPRINT, target_item))
+			ClonePlacementStrategy.internal_transfer_footprint_placement(source_item, target_item)
 			return ClonePlacementStrategy.internal_apply_placement(source_reference, target_reference, source_item, target_item)
 		else:
 			raise ValueError()

@@ -1,4 +1,4 @@
-from typing import final, Optional, cast
+from typing import final, Optional
 from abc import ABC, abstractmethod
 from dataclasses import asdict
 import logging
@@ -57,7 +57,7 @@ class PluginWrapper(pcbnew.ActionPlugin, ABC):
 		try:
 
 			logger.info("Getting board")
-			board = cast(Optional[pcbnew.BOARD], pcbnew.GetBoard()) if self.test_board is None else self.test_board
+			board = pcbnew.GetBoard() if self.test_board is None else self.test_board
 			if board is None:
 				raise Exception("Failed to determine board")
 			filename = os.path.abspath(str(board.GetFileName()))

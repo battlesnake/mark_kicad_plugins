@@ -1,4 +1,4 @@
-import pcbnew
+import pcbnew  # pyright: ignore
 
 from .point import Point
 

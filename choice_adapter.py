@@ -42,7 +42,7 @@ class ChoiceAdapter(Generic[ValueType], ABC):
 
 	###
 
-	def on_selected_change(self, event) -> None:
+	def on_selected_change(self, event: wx.Event) -> None:
 		self.update_model()
 
 	###

@@ -1,4 +1,4 @@
-from typing import TypeVar, Sequence, Iterable, List
+from typing import TypeVar, Sequence, Iterable
 from functools import reduce
 
 

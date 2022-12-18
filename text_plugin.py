@@ -1,4 +1,4 @@
-from typing import final, Type
+from typing import final
 from logging import Logger
 
 import pcbnew  # pyright: ignore

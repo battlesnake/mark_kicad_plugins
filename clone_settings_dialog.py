@@ -65,7 +65,7 @@ class CloneSettingsDialog(CloneSettingsDialogDesign):
 		self.grid_cross_interval.SetValue(self.settings.placement.grid.cross_interval / SIZE_SCALE)
 
 		@final
-		class InstancesAdapter(TreeControlBranchSelectionAdapter):
+		class InstancesAdapter(TreeControlBranchSelectionAdapter[SheetInstance]):
 			def selection_changed(self): this.instances_adapter_selection_changed()
 		self.instances_adapter = InstancesAdapter(
 			items=self.domain.instances,
@@ -136,43 +136,43 @@ class CloneSettingsDialog(CloneSettingsDialogDesign):
 
 	### Overrides
 
-	def instances_edit_veto(self, event):
+	def instances_edit_veto(self, event: wx.Event):
 		event.Veto()
 
-	def instances_selection_toggle(self, event):
+	def instances_selection_toggle(self, event: wx.Event):
 		pass  # Handled by adapter
 
-	def position_strategy_changed(self, event):
+	def position_strategy_changed(self, event: wx.Event):
 		self.settings.placement.strategy = tuple(ClonePlacementStrategyType)[self.position_strategy.GetSelection()]
 		self.model_changed()
 
-	def relative_anchor_changed(self, event):
+	def relative_anchor_changed(self, event: wx.Event):
 		pass  # Handled by adapter
 
-	def grid_sort_changed(self, event):
+	def grid_sort_changed(self, event: wx.Event):
 		pass  # Handled by adapter
 
-	def grid_flow_direction_changed(self, event):
+	def grid_flow_direction_changed(self, event: wx.Event):
 		pass  # Handled by adapter
 
-	def grid_wrap_changed(self, event):
+	def grid_wrap_changed(self, event: wx.Event):
 		self.settings.placement.grid.wrap = self.grid_wrap.GetValue()
 		self.model_changed()
 
-	def grid_wrap_at_changed(self, event):
+	def grid_wrap_at_changed(self, event: wx.Event):
 		self.settings.placement.grid.wrap_at = self.grid_wrap_at.GetValue()
 		self.model_changed()
 
-	def grid_main_interval_changed(self, event):
+	def grid_main_interval_changed(self, event: wx.Event):
 		self.settings.placement.grid.main_interval = int(self.grid_main_interval.GetValue() * SIZE_SCALE)
 		self.model_changed()
 
-	def grid_cross_interval_changed(self, event):
-		self.settings.placement.grid.cross_interval = int(self.grid_cross_interval.GetValue(), SIZE_SCALE)
+	def grid_cross_interval_changed(self, event: wx.Event):
+		self.settings.placement.grid.cross_interval = int(self.grid_cross_interval.GetValue() * SIZE_SCALE)
 		self.model_changed()
 
-	def ok_button_clicked(self, event):
+	def ok_button_clicked(self, event: wx.Event):
 		self.EndModal(wx.ID_OK)
 
-	def dialog_closed(self, event):
+	def dialog_closed(self, event: wx.Event):
 		self.EndModal(wx.ID_CANCEL)
