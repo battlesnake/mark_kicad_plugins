@@ -10,6 +10,7 @@ from .hierarchy_parser import HierarchyParser
 from .string_utils import StringUtils
 from .placement import Placement
 from .clone_placement_strategy import ClonePlacementStrategy
+from .hierarchy_logger import HierarchyLogger
 
 
 ItemType = TypeVar("ItemType", bound=pcbnew.BOARD_ITEM)
@@ -32,12 +33,12 @@ class ClonePlugin(Plugin):
 
 	def get_common_ancestor(self, footprints: Iterable[Footprint]) -> SheetInstance:
 		hierarchy = self.hierarchy
-		footprint_sheet_uuid_chains = set(
-			footprint.symbol.sheet_instance.uuid_chain
+		footprint_sheet_uuid_paths = set(
+			footprint.symbol.sheet_instance.uuid_path
 			for footprint in footprints
 		)
-		common_ancestor_uuid_chain = UuidPath.of(StringUtils.get_common_ancestor_of(footprint_sheet_uuid_chains))
-		return hierarchy.instances[common_ancestor_uuid_chain]
+		common_ancestor_uuid_path = UuidPath.of(StringUtils.get_common_ancestor_of(footprint_sheet_uuid_paths))
+		return hierarchy.instances[common_ancestor_uuid_path]
 
 	def get_peers_and_parents(self, ancestor: SheetInstance) -> Iterable[SheetInstance]:
 		hierarchy = self.hierarchy
@@ -168,6 +169,8 @@ class ClonePlugin(Plugin):
 
 		hierarchy = HierarchyParser(logger, board).parse()
 		self.hierarchy = hierarchy
+
+		HierarchyLogger(logger).log_all(hierarchy)
 
 		selected_footprints = self.get_selected_footprints()
 		if not selected_footprints:

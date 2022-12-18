@@ -1,4 +1,4 @@
-from typing import List, Set, Generic, TypeVar, Iterable, Optional, Dict, Callable
+from typing import List, Set, Generic, TypeVar, Iterable, Optional, Dict, Callable, Sequence
 from abc import ABC, abstractmethod
 from enum import Enum
 import wx
@@ -48,20 +48,28 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 
 	###
 
-	def get_recursively(self, start: Iterable[ValueType], walker: Callable[[ValueType], Iterable[ValueType]]) -> Set[ValueType]:
+	def get_recursively(self, start: Iterable[ValueType], walker: Callable[[ValueType], Iterable[ValueType]], predicate: Callable[[ValueType], bool] = lambda _: True) -> Set[ValueType]:
 		result: Set[ValueType] = set()
-		todo_next: Set[ValueType] = set(start)
-		while todo_next:
-			todo = todo_next
-			todo_next = set()
-			for item in todo:
-				result.add(item)
-				todo_next.update(walker(item))
+		queue: Set[ValueType] = set(start)
+		while queue:
+			items, queue = queue, set()
+			for item in items:
+				if predicate(item):
+					result.add(item)
+				queue.update(walker(item))
 		# Ensure result only contains items that are in out item-list.
 		# The relations structure may contain items that were filtered out from
 		# the list of items we were asked to display.
+		# Filtering here also means that branches who's children are all hidden
+		# (i.e. removed from items list) will not be considered to be leaves.
 		result.intersection_update(self.items)
 		return result
+
+	def is_leaf(self, item: ValueType) -> bool:
+		return not self.relations[item]
+
+	def get_leaves(self, start: Iterable[ValueType]):
+		return self.get_recursively(start, lambda item: self.relations[item], self.is_leaf)
 
 	def get_downwards(self, start: Iterable[ValueType]) -> Set[ValueType]:
 		return self.get_recursively(start, lambda item: self.relations[item])
@@ -72,21 +80,19 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 	###
 
 	def get_selection_state(self, item: ValueType) -> TreeItemSelectionState:
-		branch = self.get_downwards([item])
-		unselected = branch.difference(self.selection)
-		if len(unselected) == 0:
+		leaves = self.get_leaves([item])
+		selected_leaves = leaves.intersection(self.selection)
+		if len(selected_leaves) == len(leaves):
 			return TreeItemSelectionState.SELECTED
-		if len(unselected) == len(branch):
+		if len(selected_leaves) == 0:
 			return TreeItemSelectionState.UNSELECTED
 		return TreeItemSelectionState.PARTIAL_SELECTED
 
-	def get_iconised_view_text(self, item: ValueType, selection_state: Optional[TreeItemSelectionState] = None) -> str:
-		if selection_state is None:
-			selection_state = self.get_selection_state(item)
-		return f"{self.icons[selection_state]}  {self.get_view_text(item)}"
-
-	def update_view_text(self, item: ValueType, selection_state: Optional[TreeItemSelectionState] = None) -> None:
-		self.control.SetItemText(self.view_map[item], self.get_iconised_view_text(item ,selection_state))
+	def get_iconised_view_text(self, item: ValueType) -> str:
+		selection_state = self.get_selection_state(item)
+		icon = self.icons[selection_state]
+		text = self.get_view_text(item)
+		return f"{icon}  {text}"
 
 	def create_view_tree(self):
 		root_node = wx.dataview.DataViewItem(0)
@@ -130,14 +136,19 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 		self.control.SetItemText(self.view_map[item], self.get_iconised_view_text(item))
 
 	def set_selected(self, items: Iterable[ValueType], state: bool):
-		to_change = self.get_downwards(items)
+		leaves = self.get_leaves(items)
 		if state:
-			self.selection.update(to_change)
+			self.selection.update(leaves)
 		else:
-			self.selection.difference_update(to_change)
-		to_update = self.get_upwards(items).union(to_change)
-		for item in to_update:
+			self.selection.difference_update(leaves)
+		for item in self.get_upwards(items).union(self.get_downwards(items)):
 			self.update_view_item(item)
+
+	def toggle_selected(self, items: Sequence[ValueType]):
+		if not items:
+			return
+		new_state = self.get_selection_state(items[0]) != TreeItemSelectionState.SELECTED
+		self.set_selected(items, new_state)
 
 	def on_item_activated(self, event: wx.Event):
 		items: List[ValueType] = [
@@ -146,5 +157,5 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 		]
 		if not items:
 			return
-		self.set_selected(items, items[0] not in self.selection)
+		self.toggle_selected(items)
 		self.selection_changed()

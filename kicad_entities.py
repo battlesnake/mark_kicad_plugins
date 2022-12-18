@@ -92,7 +92,7 @@ class UuidPath(Sequence[UUID]):
 @dataclass(frozen=True, eq=True)
 class SheetTemplate():
 	uuid: UUID
-	filename: Filename
+	filename: Filename = field(hash=False, compare=False)
 	root_node: KicadSexpNode = field(hash=False, compare=False, repr=False)
 
 
@@ -103,7 +103,7 @@ class SheetInstance():
 
 	template: SheetTemplate = field(hash=False, compare=False)
 
-	parent: Optional["SheetInstance"] = field(hash=False, compare=False)
+	parent: Optional["SheetInstance"]
 
 	def __str__(self) -> str:
 		return self.name_path
@@ -121,26 +121,26 @@ class SheetInstance():
 		return " / ".join(self.name_chain)
 
 	@cached_property
-	def uuid_chain(self) -> UuidPath:
+	def uuid_chain(self) -> Sequence[UUID]:
 		if self.parent is None:
-			return UuidPath.of([])
+			return []
 		else:
-			return UuidPath.of(self.parent.uuid_chain + [self.uuid])
+			return list(self.parent.uuid_chain) + [self.uuid]
 
 	@cached_property
 	def template_uuid_chain(self) -> Sequence[UUID]:
 		# Omit for root
 		if self.parent is None:
-			return tuple()
+			return []
 		else:
-			return tuple(list(self.parent.template_uuid_chain) + [self.template.uuid])
+			return list(self.parent.template_uuid_chain) + [self.template.uuid]
 
 	@cached_property
 	def name_chain(self) -> Sequence[str]:
 		if self.parent is None:
-			return tuple([self.name])
+			return [self.name]
 		else:
-			return tuple(list(self.parent.name_chain) + [self.name])
+			return list(self.parent.name_chain) + [self.name]
 
 
 @dataclass(frozen=True, eq=True)
