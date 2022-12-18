@@ -1,163 +1,19 @@
-from typing import List, TypeVar, Iterable, final, Sequence
-from logging import Logger
-from dataclasses import dataclass
+from typing import List, TypeVar, Iterable, final
 
 import pcbnew  # pyright: ignore
 
 from .plugin import Plugin
-from .clone_settings import CloneSettings
-from .clone_settings_view import CloneSettingsView, CloneSettingsController, CloneSettingsViewDomain
 from .kicad_entities import SheetInstance, Footprint, UuidPath
-from .hierarchy_parser import HierarchyParser, Hierarchy
-from .string_utils import StringUtils
-from .placement import Placement
-from .clone_placement_strategy import ClonePlacementStrategy, ClonePlacementChangeLog
+from .hierarchy_parser import HierarchyParser
 from .hierarchy_logger import HierarchyLogger
+from .string_utils import StringUtils
+from .clone_placement_strategy import ClonePlacementChangeLog
+from .clone_service import CloneSelection
+from .clone_settings_controller import CloneSettingsController
+from .clone_settings_view import CloneSettingsView, CloneSettingsViewDomain
 
 
 ItemType = TypeVar("ItemType", bound=pcbnew.BOARD_ITEM)
-
-
-settings_view: CloneSettingsView | None = None
-change_log: ClonePlacementChangeLog | None = None
-
-
-def filter_selected(items: Iterable[ItemType]) -> List[ItemType]:
-	return [
-		item
-		for item in items
-	if item.IsSelected()
-]
-
-
-@dataclass(eq=False, repr=False, frozen=True)
-class CloneSelection():
-	source_footprints: Sequence[pcbnew.FOOTPRINT]
-	source_tracks: Sequence[pcbnew.PCB_TRACK]
-	source_drawings: Sequence[pcbnew.BOARD_ITEM]
-	source_zones: Sequence[pcbnew.ZONE]
-
-
-@final
-class ClonePluginController(CloneSettingsController):
-
-	def __init__(self, logger: Logger, board: pcbnew.BOARD, hierarchy: Hierarchy, selection: CloneSelection):
-		self.logger = logger
-		self.board = board
-		self.hierarchy = hierarchy
-		self.selection = selection
-		self.is_preview = False
-
-	def revert(self) -> None:
-		global change_log
-		if change_log is None:
-			return
-		change_log.undo()
-		change_log = None
-		self.is_preview = False
-
-	def has_preview(self) -> bool:
-		return self.is_preview
-
-	def apply_preview(self, settings: CloneSettings) -> None:
-		self.logger.info("Command: Apply preview")
-		self.revert()
-		self.clone_subcircuits(settings)
-		self.is_preview = True
-		pcbnew.Refresh()
-
-	def clear_preview(self) -> None:
-		self.logger.info("Command: Clear preview")
-		if self.is_preview:
-			self.revert()
-		pcbnew.Refresh()
-
-	def can_undo(self) -> bool:
-		return change_log is not None
-
-	def apply(self, settings: CloneSettings) -> None:
-		self.logger.info("Command: Apply")
-		self.revert()
-		self.clone_subcircuits(settings)
-		pcbnew.Refresh()
-
-	def undo(self) -> None:
-		self.logger.info("Command: Undo")
-		self.revert()
-		pcbnew.Refresh()
-
-	def clone_subcircuits(self, settings: CloneSettings) -> None:
-		logger = self.logger
-		hierarchy = self.hierarchy
-		selection = self.selection
-
-		source_reference = hierarchy.footprints[UuidPath.of(selection.source_footprints[0].GetPath())]
-		self.logger.info("Source reference: %s (%s)", source_reference.reference, source_reference.symbol.sheet_instance.name_path)
-
-		selected_instances = settings.instances
-		for instance in selected_instances:
-			self.logger.info("Target sheet: %s", instance.name_path)
-		selected_instance_paths = {
-			instance.uuid_chain
-			for instance in selected_instances
-		}
-
-		targets = [
-			footprint
-			for footprint in hierarchy.symbol_instances[source_reference.symbol]
-			if footprint != source_reference
-			if footprint.path[:-1] in selected_instance_paths
-		]
-		for target in targets:
-			self.logger.info("Targets: %s", target.reference)
-
-		source_reference_placement = Placement.of(source_reference.data)
-
-		placement_strategy = ClonePlacementStrategy.get(
-			settings=settings.placement,
-			reference=source_reference,
-			targets=targets
-		)
-
-		# TODO: Option to clear target placement areas so we never create
-		# overlaps
-
-		for target_reference, target_reference_placement in placement_strategy:
-			self.logger.info("Rendering target subcircuit around %s", target_reference.reference)
-			for source_footprint in selection.source_footprints:
-				source_path = UuidPath.of(source_footprint.GetPath())
-				target_reference_path = target_reference.path
-				target_path = target_reference_path[:-1] + source_path[-1]
-				source_footprint = hierarchy.footprints[source_path]
-				target_footprint = hierarchy.footprints[target_path]
-				logger.debug(f"Matched source %s to target %s", source_footprint, target_footprint)
-				# Apply placement
-				placement_strategy.apply_placement(
-					source_reference=source_reference_placement,
-					target_reference=target_reference_placement,
-					source_item=source_footprint.data,
-					target_item=target_footprint.data,
-				)
-			for source_track in selection.source_tracks:
-				placement_strategy.apply_placement(
-					source_reference=source_reference_placement,
-					target_reference=target_reference_placement,
-					source_item=source_track,
-				)
-			for source_drawing in selection.source_drawings:
-				placement_strategy.apply_placement(
-					source_reference=source_reference_placement,
-					target_reference=target_reference_placement,
-					source_item=source_drawing,
-				)
-			for source_zone in selection.source_zones:
-				placement_strategy.apply_placement(
-					source_reference=source_reference_placement,
-					target_reference=target_reference_placement,
-					source_item=source_zone,
-				)
-
-		self.change_log = placement_strategy.change_log
 
 
 @final
@@ -168,6 +24,14 @@ class ClonePlugin(Plugin):
 	@staticmethod
 	def path_to_str(path: pcbnew.KIID_PATH) -> str:
 		return "".join(f"/{uuid.AsString()}" for uuid in path)
+
+	@staticmethod
+	def filter_selected(items: Iterable[ItemType]) -> List[ItemType]:
+		return [
+			item
+			for item in items
+		if item.IsSelected()
+	]
 
 	def get_common_ancestor_of_footprints(self, footprints: Iterable[Footprint]) -> SheetInstance:
 		hierarchy = self.hierarchy
@@ -183,7 +47,7 @@ class ClonePlugin(Plugin):
 		hierarchy = self.hierarchy
 		return [
 			hierarchy.footprints[UuidPath.of(footprint.GetPath())]
-			for footprint in filter_selected(board.Footprints())
+			for footprint in self.filter_selected(board.Footprints())
 		]
 
 	def execute(self) -> None:
@@ -196,10 +60,10 @@ class ClonePlugin(Plugin):
 		HierarchyLogger(logger).log_all(hierarchy)
 
 		selection = CloneSelection(
-			source_footprints=filter_selected(board.Footprints()),
-			source_tracks=filter_selected(board.Tracks()),
-			source_drawings=filter_selected(board.Drawings()),
-			source_zones=filter_selected(board.Zones()),
+			source_footprints=self.filter_selected(board.Footprints()),
+			source_tracks=self.filter_selected(board.Tracks()),
+			source_drawings=self.filter_selected(board.Drawings()),
+			source_zones=self.filter_selected(board.Zones()),
 		)
 
 		selected_footprints = [
@@ -254,11 +118,8 @@ class ClonePlugin(Plugin):
 			instances=sorted(target_instances, key=lambda instance: instance.name_path),
 			footprints=sorted(selected_footprints, key=lambda footprint: footprint.reference),
 		)
-		settings_controller = ClonePluginController(logger, board, hierarchy, selection)
 
-		global settings_view
-		if settings_view is not None:
-			settings_view.Destroy()
-			settings_view = None
-		settings_view = CloneSettingsView(logger, settings_domain, settings_controller)
-		settings_view.Show()
+		settings_controller = CloneSettingsController(logger, board, hierarchy, selection)
+
+		view = CloneSettingsView(logger, settings_domain, settings_controller)
+		view.execute()

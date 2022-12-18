@@ -1,5 +1,4 @@
-from typing import Dict, cast, Any
-from dataclasses import dataclass, field
+from typing import Any
 from logging import Logger
 from uuid import UUID
 from pathlib import Path
@@ -7,26 +6,12 @@ import os.path
 
 import pcbnew  # pyright: ignore
 
-from .multi_map import MultiMap
 from .kicad_sexp_parser import KicadSexpParser
-from .kicad_entities import Filename, UuidPath, SheetTemplate, SheetInstance, Symbol, Footprint
+from .kicad_entities import UuidPath, SheetTemplate, SheetInstance, Symbol, Footprint
+from .hierarchy import Hierarchy
 
 
 ROOT_UUID = UUID(bytes=b"\0" * 16)
-
-
-@dataclass(repr=False)
-class Hierarchy():
-
-	templates: Dict[Filename, SheetTemplate] = field(default_factory=lambda:{})
-
-	instances: Dict[UuidPath, SheetInstance] = field(default_factory=lambda:{})
-	relations: MultiMap[SheetInstance, SheetInstance] = field(default_factory=lambda:MultiMap())
-	root: SheetInstance = field(default_factory=lambda:cast(SheetInstance, None))
-
-	symbols: Dict[UUID, Symbol] = field(default_factory=lambda:{})
-	footprints: Dict[UuidPath, Footprint] = field(default_factory=lambda:{})
-	symbol_instances: MultiMap[Symbol, Footprint] = field(default_factory=lambda:MultiMap())
 
 
 class HierarchyParser():
@@ -61,6 +46,7 @@ class HierarchyParser():
 			}
 			filename = properties["Sheet file"][0]
 			path_from_base = os.path.join(os.path.dirname(filename), filename)
+			logger.info(" - Sheet %s", path_from_base)
 			# Recurse if schematic not already loaded
 			if path_from_base not in templates:
 				self.parse_schematics(path_from_base)
@@ -81,6 +67,7 @@ class HierarchyParser():
 			uuid = UUID(hex=sheet_node.uuid.values[0])
 			name = properties["Sheet name"][0]
 			filename = properties["Sheet file"][0]
+			logger.info(" - Sheet instance %s (%s) / %s", name, filename, uuid)
 			path_from_base = os.path.join(os.path.dirname(filename), filename)
 			template = templates[path_from_base]
 			instance = SheetInstance(uuid=uuid, name=name, template=template, parent=parent_instance)
@@ -127,6 +114,7 @@ class HierarchyParser():
 			value = symbol_instance.value.values[0]
 			uuid = path[-1]
 			sheet_instance_uuid = path[:-1]
+			logger.info(" - Symbol %s (%s)", reference, value)
 			try:
 				sheet_instance = instances[sheet_instance_uuid]
 			except KeyError:
@@ -143,6 +131,7 @@ class HierarchyParser():
 		symbol_instances = self.result.symbol_instances
 		logger.info("Parsing footprints")
 		for footprint in self.board.Footprints():
+			logger.info(" - Footprint %s (%s)", footprint.GetReference(), footprint.GetValue())
 			path = UuidPath.of(footprint.GetPath())
 			reference = str(footprint.GetReference())
 			value = str(footprint.GetValue())

@@ -4,7 +4,7 @@ from uuid import UUID
 from logging import Logger
 
 from .kicad_entities import UuidPath
-from .hierarchy_parser import Hierarchy
+from .hierarchy import Hierarchy
 
 
 class HierarchyLogger():

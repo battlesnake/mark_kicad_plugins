@@ -1,7 +1,6 @@
 from typing import Optional, List, final, cast
 from dataclasses import dataclass
 from logging import Logger
-from abc import ABC, abstractmethod
 
 import wx
 import wx.dataview
@@ -15,43 +14,20 @@ from .tree_control_branch_selection_adapter import TreeControlBranchSelectionAda
 from .clone_placement_settings import ClonePlacementSettings, ClonePlacementStrategyType, ClonePlacementRelativeStrategySettings, ClonePlacementGridStrategySettings, ClonePlacementGridFlow, ClonePlacementGridSort
 from .clone_settings import CloneSettings
 from .clone_settings_view_design import CloneSettingsViewDesign
+from .clone_settings_controller import CloneSettingsController
 
 
+@final
 @dataclass
 class CloneSettingsViewDomain():
 	instances: List[SheetInstance]
 	footprints: List[Footprint]
 
 
-class CloneSettingsController(ABC):
-
-	@abstractmethod
-	def has_preview(self) -> bool:
-		pass
-
-	@abstractmethod
-	def apply_preview(self, settings: CloneSettings) -> None:
-		pass
-
-	@abstractmethod
-	def clear_preview(self) -> None:
-		pass
-
-	@abstractmethod
-	def can_undo(self) -> bool:
-		pass
-
-	@abstractmethod
-	def apply(self, settings: CloneSettings) -> None:
-		pass
-
-	@abstractmethod
-	def undo(self) -> None:
-		pass
-
-
 @final
 class CloneSettingsView(CloneSettingsViewDesign):
+
+	previous_instance: Optional["CloneSettingsView"] = None
 
 	def __init__(
 		self,
@@ -126,6 +102,11 @@ class CloneSettingsView(CloneSettingsViewDesign):
 		)
 
 	def execute(self) -> Optional[CloneSettings]:
+		if CloneSettingsView.previous_instance is not None:
+			previous_instance = CloneSettingsView.previous_instance
+			CloneSettingsView.previous_instance = None
+			previous_instance.DestroyLater()
+		CloneSettingsView.previous_instance = self
 		self.model_changed()
 		self.Show()
 
