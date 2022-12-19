@@ -8,7 +8,7 @@ from .clone_settings import CloneSettings
 from .kicad_entities import UuidPath
 from .hierarchy import Hierarchy
 from .placement import Placement
-from .clone_placement_strategy import ClonePlacementStrategy, ClonePlacementChangeLog
+from .clone_placement_strategy import ClonePlacementStrategy, ClonePlacementStrategyType, ClonePlacementChangeLog
 from .string_utils import StringUtils
 
 
@@ -48,7 +48,12 @@ class CloneService():
 
 		logger = logger.getChild(type(self).__name__)
 
-		source_reference = hierarchy.footprints[UuidPath.of(selection.source_footprints[0].GetPath())]
+		if settings.placement.strategy == ClonePlacementStrategyType.RELATIVE:
+			source_reference_footprint = settings.placement.relative.anchor.data
+		else:
+			source_reference_footprint = selection.source_footprints[0]
+
+		source_reference = hierarchy.footprints[UuidPath.of(source_reference_footprint.GetPath())]
 		logger.info("Source reference footprint: %s (%s)", source_reference.reference, source_reference.symbol.sheet_instance.name_path)
 
 		selected_instances = settings.instances
@@ -67,7 +72,6 @@ class CloneService():
 		target_references = [
 			footprint
 			for footprint in hierarchy.symbol_instances[source_reference.symbol]
-			if footprint != source_reference
 			if any(
 				StringUtils.is_child_of(instance, footprint.path)
 				for instance in selected_instance_paths

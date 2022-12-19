@@ -18,13 +18,6 @@ from .clone_settings_controller import CloneSettingsController
 
 
 @final
-@dataclass
-class CloneSettingsViewDomain():
-	instances: List[SheetInstance]
-	footprints: List[Footprint]
-
-
-@final
 class CloneSettingsView(CloneSettingsViewDesign):
 
 	previous_instance: Optional["CloneSettingsView"] = None
@@ -32,27 +25,16 @@ class CloneSettingsView(CloneSettingsViewDesign):
 	def __init__(
 		self,
 		logger: Logger,
-		domain: CloneSettingsViewDomain,
+		instances: List[SheetInstance],
+		footprints: List[Footprint],
 		controller: CloneSettingsController,
-		settings: Optional[CloneSettings] = None
+		settings: CloneSettings,
 	):
 		super().__init__(parent=wx.FindWindowByName("PcbFrame"))
 		self.logger = logger.getChild(cast(str, type(self).__name__))
 		self.controller = controller
-		if not domain.footprints:
+		if not footprints:
 			raise ValueError("No footprints provided")
-		self.domain = domain
-		if settings is None:
-			settings = CloneSettings(
-				instances=set(self.domain.instances),
-				placement=ClonePlacementSettings(
-					strategy=ClonePlacementStrategyType.RELATIVE,
-					relative=ClonePlacementRelativeStrategySettings(
-						anchor=self.domain.footprints[0],
-					),
-					grid=ClonePlacementGridStrategySettings(),
-				)
-			)
 		self.settings = settings
 		this = self
 
@@ -66,7 +48,7 @@ class CloneSettingsView(CloneSettingsViewDesign):
 		class InstancesAdapter(TreeControlBranchSelectionAdapter[SheetInstance]):
 			def selection_changed(self): this.instances_adapter_selection_changed()
 		self.instances_adapter = InstancesAdapter(
-			items=self.domain.instances,
+			items=instances,
 			get_parent=lambda item: item.parent,
 			control=self.instances,
 			selection=self.settings.instances,
@@ -77,7 +59,7 @@ class CloneSettingsView(CloneSettingsViewDesign):
 			def selection_changed(self): this.relative_anchor_adapter_selection_changed()
 		self.relative_anchor_adapter = RelativeAnchorAdapter(
 			control=self.relative_anchor,
-			items=self.domain.footprints,
+			items=footprints,
 			selection=[item for item in [self.settings.placement.relative.anchor] if item is not None],
 		)
 

@@ -1,16 +1,20 @@
 from typing import List, TypeVar, Iterable, final
+from functools import reduce
+from math import ceil
 
 import pcbnew  # pyright: ignore
 
 from .plugin import Plugin
-from .kicad_entities import SheetInstance, Footprint, UuidPath
+from .kicad_entities import SheetInstance, Footprint, UuidPath, SIZE_SCALE
 from .hierarchy_parser import HierarchyParser
 from .hierarchy_logger import HierarchyLogger
 from .string_utils import StringUtils
-from .clone_placement_strategy import ClonePlacementChangeLog
 from .clone_service import CloneSelection
 from .clone_settings_controller import CloneSettingsController
-from .clone_settings_view import CloneSettingsView, CloneSettingsViewDomain
+from .clone_settings_view import CloneSettingsView
+from .clone_settings import CloneSettings
+from .clone_placement_strategy import ClonePlacementChangeLog
+from .clone_placement_settings import ClonePlacementGridFlow, ClonePlacementGridSort, ClonePlacementGridStrategySettings, ClonePlacementRelativeStrategySettings, ClonePlacementSettings, ClonePlacementStrategyType
 from .user_exception import UserException
 
 
@@ -112,18 +116,61 @@ class ClonePlugin(Plugin):
 				else instance.uuid_path
 			]
 			for instance in peer_instances
-			if instance != reference_instance
 		)
 
 		for instance in target_instances:
 			self.logger.info("Instance we can clone to: %s", instance.name_path)
 
-		settings_domain = CloneSettingsViewDomain(
-			instances=sorted(target_instances, key=lambda instance: instance.name_path),
-			footprints=sorted(selected_footprints, key=lambda footprint: footprint.reference),
+		selection_bboxes = [
+			footprint.data.GetBoundingBox(True, True)
+			for footprint in selected_footprints
+		]
+
+		selection_bbox_coords = [
+			(bbox.GetLeft(), bbox.GetTop(), bbox.GetRight(), bbox.GetBottom())
+			for bbox in selection_bboxes
+			if bbox.GetArea() > 0
+		]
+
+		selection_bbox = reduce(
+			lambda a, b: (min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3])),
+			selection_bbox_coords
+		)
+
+		selection_bbox_width = selection_bbox[2] - selection_bbox[0]
+		selection_bbox_height = selection_bbox[3] - selection_bbox[1]
+
+		self.logger.info("Selection bounding-box: %sx%s", selection_bbox_width, selection_bbox_height)
+
+		selection_size = max(1, selection_bbox_width, selection_bbox_height)
+
+		selection_size = SIZE_SCALE * ceil(1 + 1.2 * selection_size / SIZE_SCALE)
+
+		settings = CloneSettings(
+			instances=set(target_instances),
+			placement=ClonePlacementSettings(
+				strategy=ClonePlacementStrategyType.RELATIVE,
+				relative=ClonePlacementRelativeStrategySettings(
+					anchor=selected_footprints[0],
+				),
+				grid=ClonePlacementGridStrategySettings(
+					sort=ClonePlacementGridSort.HIERARCHY,
+					flow=ClonePlacementGridFlow.ROW,
+					main_interval=selection_size,
+					cross_interval=selection_size,
+					wrap=False,
+					wrap_at=8,
+				),
+			)
 		)
 
 		settings_controller = CloneSettingsController(logger, board, hierarchy, selection)
 
-		view = CloneSettingsView(logger, settings_domain, settings_controller)
+		view = CloneSettingsView(
+			logger=logger,
+			instances=sorted(target_instances, key=lambda instance: instance.name_path), 
+			footprints=sorted(selected_footprints, key=lambda footprint: footprint.reference),
+			controller=settings_controller,
+			settings=settings,
+		)
 		view.execute()

@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 
 import pcbnew  # pyright: ignore
 
-from .kicad_entities import Footprint, SIZE_SCALE
+from .kicad_entities import Footprint
 
 
 class ClonePlacementStrategySettings(ABC):
@@ -18,7 +18,7 @@ class ClonePlacementStrategySettings(ABC):
 @final
 @dataclass
 class ClonePlacementRelativeStrategySettings(ClonePlacementStrategySettings):
-	anchor: Optional[Footprint] = None
+	anchor: Footprint
 
 	def is_valid(self) -> bool:
 		return self.anchor is not None
@@ -37,12 +37,12 @@ class ClonePlacementGridFlow(Enum):
 @final
 @dataclass
 class ClonePlacementGridStrategySettings(ClonePlacementStrategySettings):
-	sort: ClonePlacementGridSort = ClonePlacementGridSort.HIERARCHY
-	flow: ClonePlacementGridFlow = ClonePlacementGridFlow.ROW
-	main_interval: int = SIZE_SCALE
-	wrap: bool = False
-	wrap_at: int = 8
-	cross_interval: int = SIZE_SCALE
+	sort: ClonePlacementGridSort
+	flow: ClonePlacementGridFlow
+	main_interval: int
+	wrap: bool
+	wrap_at: int
+	cross_interval: int
 
 	def is_valid(self) -> bool:
 		return self.main_interval > 0 and \
@@ -56,10 +56,10 @@ class ClonePlacementStrategyType(Enum):
 
 @dataclass
 class ClonePlacementSettings():
-	strategy: ClonePlacementStrategyType = ClonePlacementStrategyType.RELATIVE
+	strategy: ClonePlacementStrategyType
 
-	relative: ClonePlacementRelativeStrategySettings = ClonePlacementRelativeStrategySettings()
-	grid: ClonePlacementGridStrategySettings = ClonePlacementGridStrategySettings()
+	relative: ClonePlacementRelativeStrategySettings
+	grid: ClonePlacementGridStrategySettings
 
 	def is_valid(self) -> bool:
 		if self.strategy == ClonePlacementStrategyType.RELATIVE:
