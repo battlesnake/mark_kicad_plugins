@@ -7,7 +7,7 @@ import pcbnew  # pyright: ignore
 from .point import Point
 from .linear_interpolate import LinearInterpolate
 from .anchor import Anchor
-
+from .user_exception import UserException
 from .plugin import Plugin
 
 
@@ -74,7 +74,7 @@ class TextPlugin(Plugin):
 		layer_name = layer_configuration.name
 		layer_id = self.board.GetLayerID(cast(pcbnew.wxString, layer_name))
 		if layer_id == -1:
-			raise ValueError(f"Layer \"{layer_name}\" not found in board, and I haven't implemented automatic setup of layers yet")
+			raise UserException(f"Layer \"{layer_name}\" not found in board, and I haven't implemented automatic setup of layers yet")
 		return layer_id
 
 	def process_text(self, text: pcbnew.FP_TEXT, text_configuration: TextConfiguration) -> None:

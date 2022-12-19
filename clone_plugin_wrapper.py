@@ -21,6 +21,3 @@ class ClonePluginWrapper(PluginWrapper):
 			name="Clone subcircuit across sheet instances",
 			description="Clones the selected subcircuit (including footprint placement, tracks, vias, drawings, zones) across to other instances of the sheet containing it",
 		)
-
-
-ClonePluginWrapper().register()

@@ -21,6 +21,3 @@ class TextPluginWrapper(PluginWrapper):
 			name="Text to dedicated layers",
 			description="Assign references and values to dedicated layers (which must be created beforehand: Refs, Values)",
 		)
-
-
-TextPluginWrapper().register()

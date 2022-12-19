@@ -11,6 +11,7 @@ from .clone_placement_strategy import ClonePlacementChangeLog
 from .clone_service import CloneSelection
 from .clone_settings_controller import CloneSettingsController
 from .clone_settings_view import CloneSettingsView, CloneSettingsViewDomain
+from .user_exception import UserException
 
 
 ItemType = TypeVar("ItemType", bound=pcbnew.BOARD_ITEM)
@@ -54,7 +55,10 @@ class ClonePlugin(Plugin):
 		logger = self.logger
 		board = self.board
 
-		hierarchy = HierarchyParser(logger, board).parse()
+		try:
+			hierarchy = HierarchyParser(logger, board).parse()
+		except Exception as error:
+			raise UserException("Failed to parse board / schematic structure") from error
 		self.hierarchy = hierarchy
 
 		HierarchyLogger(logger).log_all(hierarchy)
@@ -72,7 +76,7 @@ class ClonePlugin(Plugin):
 		]
 		if not selected_footprints:
 			logger.error("No footprints selected")
-			raise ValueError("No footprints in selection")
+			raise UserException("No footprints in selection")
 
 		selected_footprints_common_ancestor = self.get_common_ancestor_of_footprints(selected_footprints)
 		self.logger.info("Common ancestor sheet of all selected footprints: %s", selected_footprints_common_ancestor.name_path)
