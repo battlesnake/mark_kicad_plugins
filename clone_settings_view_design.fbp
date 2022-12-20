@@ -1212,7 +1212,7 @@
                                                             <property name="gripper">0</property>
                                                             <property name="hidden">0</property>
                                                             <property name="id">wxID_ANY</property>
-                                                            <property name="inc">1</property>
+                                                            <property name="inc">0.1</property>
                                                             <property name="initial">0</property>
                                                             <property name="max">1e+06</property>
                                                             <property name="max_size"></property>
@@ -1338,7 +1338,7 @@
                                                             <property name="gripper">0</property>
                                                             <property name="hidden">0</property>
                                                             <property name="id">wxID_ANY</property>
-                                                            <property name="inc">1</property>
+                                                            <property name="inc">0.1</property>
                                                             <property name="initial">0</property>
                                                             <property name="max">1e+06</property>
                                                             <property name="max_size"></property>

@@ -129,7 +129,7 @@ class CloneSettingsViewDesign ( wx.Frame ):
 
 		position_strategy_grid_sizer.Add( self.grid_main_interval_label, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.ALL, 5 )
 
-		self.grid_main_interval = wx.SpinCtrlDouble( self.position_strategy_grid, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.SP_ARROW_KEYS, 0, 1e+06, 0, 1 )
+		self.grid_main_interval = wx.SpinCtrlDouble( self.position_strategy_grid, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.SP_ARROW_KEYS, 0, 1e+06, 0, 0.1 )
 		self.grid_main_interval.SetDigits( 3 )
 		position_strategy_grid_sizer.Add( self.grid_main_interval, 0, wx.ALL|wx.EXPAND, 5 )
 
@@ -138,7 +138,7 @@ class CloneSettingsViewDesign ( wx.Frame ):
 
 		position_strategy_grid_sizer.Add( self.grid_cross_interval_label, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.ALL, 5 )
 
-		self.grid_cross_interval = wx.SpinCtrlDouble( self.position_strategy_grid, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.SP_ARROW_KEYS, 0, 1e+06, 0, 1 )
+		self.grid_cross_interval = wx.SpinCtrlDouble( self.position_strategy_grid, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.SP_ARROW_KEYS, 0, 1e+06, 0, 0.1 )
 		self.grid_cross_interval.SetDigits( 3 )
 		position_strategy_grid_sizer.Add( self.grid_cross_interval, 0, wx.ALL|wx.EXPAND, 5 )
 
