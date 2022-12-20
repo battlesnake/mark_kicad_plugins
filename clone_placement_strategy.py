@@ -5,7 +5,8 @@ from dataclasses import dataclass, field
 
 import pcbnew  # pyright: ignore
 
-from .kicad_entities import Footprint, ROTATION_SCALE
+from .kicad_units import RotationUnits
+from .kicad_entities import Footprint
 from .placement import Placement
 from .clone_placement_settings import ClonePlacementGridFlow, ClonePlacementGridSort, ClonePlacementGridStrategySettings, ClonePlacementStrategyType, ClonePlacementSettings
 
@@ -69,7 +70,7 @@ class ClonePlacementStrategy(ABC, Iterator[PlacementResult]):
 			flipped_angle = copysign(180 - abs(source_angle), source_angle)
 			rotation = 180 - flipped_angle - target_reference.angle
 		rotation += target_reference.angle - source_reference.angle
-		target_item.Rotate(target_reference.position, int(rotation * ROTATION_SCALE))
+		target_item.Rotate(target_reference.position, int(rotation * RotationUnits.PER_DEGREE))
 
 	@staticmethod
 	def internal_transfer_footprint_placement(source: pcbnew.FOOTPRINT, target: pcbnew.FOOTPRINT) -> None:

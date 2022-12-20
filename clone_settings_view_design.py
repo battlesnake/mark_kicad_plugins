@@ -80,6 +80,12 @@ class CloneSettingsViewDesign ( wx.Frame ):
 		self.grid_sort.SetSelection( 0 )
 		position_strategy_grid_sizer.Add( self.grid_sort, 0, wx.ALL, 5 )
 
+
+		position_strategy_grid_sizer.Add( ( 0, 10), 1, wx.EXPAND, 5 )
+
+
+		position_strategy_grid_sizer.Add( ( 0, 10), 1, wx.EXPAND, 5 )
+
 		self.grid_flow_direction_label = wx.StaticText( self.position_strategy_grid, wx.ID_ANY, u"Flow direction", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.grid_flow_direction_label.Wrap( -1 )
 
@@ -89,6 +95,12 @@ class CloneSettingsViewDesign ( wx.Frame ):
 		self.grid_flow_direction = wx.Choice( self.position_strategy_grid, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, grid_flow_directionChoices, 0 )
 		self.grid_flow_direction.SetSelection( 1 )
 		position_strategy_grid_sizer.Add( self.grid_flow_direction, 0, wx.ALL, 5 )
+
+
+		position_strategy_grid_sizer.Add( ( 0, 10), 1, wx.EXPAND, 5 )
+
+
+		position_strategy_grid_sizer.Add( ( 0, 10), 1, wx.EXPAND, 5 )
 
 		self.grid_wrap_label = wx.StaticText( self.position_strategy_grid, wx.ID_ANY, u"Wrapping", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.grid_wrap_label.Wrap( -1 )
@@ -105,6 +117,12 @@ class CloneSettingsViewDesign ( wx.Frame ):
 
 		self.grid_wrap_at = wx.SpinCtrl( self.position_strategy_grid, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.SP_ARROW_KEYS, 0, 10, 0 )
 		position_strategy_grid_sizer.Add( self.grid_wrap_at, 0, wx.ALL|wx.EXPAND, 5 )
+
+
+		position_strategy_grid_sizer.Add( ( 0, 10), 0, 0, 5 )
+
+
+		position_strategy_grid_sizer.Add( ( 0, 10), 0, 0, 5 )
 
 		self.grid_main_interval_label = wx.StaticText( self.position_strategy_grid, wx.ID_ANY, u"Main-axis interval", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.grid_main_interval_label.Wrap( -1 )
@@ -123,6 +141,22 @@ class CloneSettingsViewDesign ( wx.Frame ):
 		self.grid_cross_interval = wx.SpinCtrlDouble( self.position_strategy_grid, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.SP_ARROW_KEYS, 0, 1e+06, 0, 1 )
 		self.grid_cross_interval.SetDigits( 3 )
 		position_strategy_grid_sizer.Add( self.grid_cross_interval, 0, wx.ALL|wx.EXPAND, 5 )
+
+
+		position_strategy_grid_sizer.Add( ( 0, 10), 1, wx.EXPAND, 5 )
+
+
+		position_strategy_grid_sizer.Add( ( 0, 10), 1, wx.EXPAND, 5 )
+
+		self.grid_unit_label = wx.StaticText( self.position_strategy_grid, wx.ID_ANY, u"Length unit", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.grid_unit_label.Wrap( -1 )
+
+		position_strategy_grid_sizer.Add( self.grid_unit_label, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.ALL, 5 )
+
+		grid_unitChoices = [ u"Inches", u"Millimetre", u"Mil" ]
+		self.grid_unit = wx.Choice( self.position_strategy_grid, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, grid_unitChoices, 0 )
+		self.grid_unit.SetSelection( 0 )
+		position_strategy_grid_sizer.Add( self.grid_unit, 0, wx.ALL, 5 )
 
 
 		self.position_strategy_grid.SetSizer( position_strategy_grid_sizer )
@@ -185,6 +219,7 @@ class CloneSettingsViewDesign ( wx.Frame ):
 		self.grid_wrap_at.Bind( wx.EVT_SPINCTRL, self.grid_wrap_at_changed )
 		self.grid_main_interval.Bind( wx.EVT_SPINCTRLDOUBLE, self.grid_main_interval_changed )
 		self.grid_cross_interval.Bind( wx.EVT_SPINCTRLDOUBLE, self.grid_cross_interval_changed )
+		self.grid_unit.Bind( wx.EVT_CHOICE, self.grid_unit_changed )
 		self.undo_button.Bind( wx.EVT_BUTTON, self.undo_button_clicked )
 		self.ok_button.Bind( wx.EVT_BUTTON, self.ok_button_clicked )
 		self.preview_button.Bind( wx.EVT_BUTTON, self.preview_button_clicked )
@@ -226,6 +261,9 @@ class CloneSettingsViewDesign ( wx.Frame ):
 		pass
 
 	def grid_cross_interval_changed( self, event ):
+		pass
+
+	def grid_unit_changed( self, event ):
 		pass
 
 	def undo_button_clicked( self, event ):

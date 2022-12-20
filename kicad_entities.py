@@ -8,10 +8,6 @@ import pcbnew  # pyright: ignore
 from .kicad_sexp_parser import KicadSexpNode
 
 
-SIZE_SCALE: int = 1000000
-ROTATION_SCALE: int = 10
-
-
 Filename = str
 Reference = str
 

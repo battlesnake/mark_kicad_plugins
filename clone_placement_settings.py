@@ -1,10 +1,11 @@
-from typing import Optional, final
+from typing import final
 from dataclasses import dataclass
 from enum import Enum
 from abc import ABC, abstractmethod
 
 import pcbnew  # pyright: ignore
 
+from .kicad_units import UserUnits
 from .kicad_entities import Footprint
 
 
@@ -39,10 +40,11 @@ class ClonePlacementGridFlow(Enum):
 class ClonePlacementGridStrategySettings(ClonePlacementStrategySettings):
 	sort: ClonePlacementGridSort
 	flow: ClonePlacementGridFlow
+	length_unit: UserUnits
 	main_interval: int
+	cross_interval: int
 	wrap: bool
 	wrap_at: int
-	cross_interval: int
 
 	def is_valid(self) -> bool:
 		return self.main_interval > 0 and \

@@ -5,7 +5,8 @@ from math import ceil
 import pcbnew  # pyright: ignore
 
 from .plugin import Plugin
-from .kicad_entities import SheetInstance, Footprint, UuidPath, SIZE_SCALE
+from .kicad_units import UserUnits, SizeUnits
+from .kicad_entities import SheetInstance, Footprint, UuidPath
 from .hierarchy_parser import HierarchyParser
 from .hierarchy_logger import HierarchyLogger
 from .string_utils import StringUtils
@@ -144,7 +145,14 @@ class ClonePlugin(Plugin):
 
 		selection_size = max(1, selection_bbox_width, selection_bbox_height)
 
-		selection_size = SIZE_SCALE * ceil(1 + 1.2 * selection_size / SIZE_SCALE)
+		user_unit = UserUnits(pcbnew.GetUserUnits())
+		length_unit = int({
+			UserUnits.INCH: SizeUnits.PER_INCH / 10,
+			UserUnits.MILLIMETRE: SizeUnits.PER_MILLIMETRE,
+			UserUnits.MIL: SizeUnits.PER_MIL * 100,
+		}[user_unit])
+
+		selection_size = length_unit * ceil(1 + 1.2 * selection_size / length_unit)
 
 		settings = CloneSettings(
 			instances=set(target_instances),
@@ -158,6 +166,7 @@ class ClonePlugin(Plugin):
 					flow=ClonePlacementGridFlow.ROW,
 					main_interval=selection_size,
 					cross_interval=selection_size,
+					length_unit=user_unit,
 					wrap=False,
 					wrap_at=8,
 				),

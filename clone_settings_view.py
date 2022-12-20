@@ -1,5 +1,4 @@
 from typing import Optional, List, final, cast
-from dataclasses import dataclass
 from logging import Logger
 
 import wx
@@ -7,11 +6,12 @@ import wx.dataview
 
 import pcbnew  # pyright: ignore
 
-from .kicad_entities import SheetInstance, Footprint, SIZE_SCALE
+from .kicad_units import UserUnits, SizeUnits
+from .kicad_entities import SheetInstance, Footprint
 from .list_box_adapter import StaticListBoxAdapter
 from .choice_adapter import StaticChoiceAdapter
 from .tree_control_branch_selection_adapter import TreeControlBranchSelectionAdapter
-from .clone_placement_settings import ClonePlacementSettings, ClonePlacementStrategyType, ClonePlacementRelativeStrategySettings, ClonePlacementGridStrategySettings, ClonePlacementGridFlow, ClonePlacementGridSort
+from .clone_placement_settings import ClonePlacementStrategyType, ClonePlacementGridFlow, ClonePlacementGridSort
 from .clone_settings import CloneSettings
 from .clone_settings_view_design import CloneSettingsViewDesign
 from .clone_settings_controller import CloneSettingsController
@@ -41,8 +41,8 @@ class CloneSettingsView(CloneSettingsViewDesign):
 		self.position_strategy.SetSelection(list(ClonePlacementStrategyType).index(self.settings.placement.strategy))
 		self.grid_wrap.SetValue(self.settings.placement.grid.wrap)
 		self.grid_wrap_at.SetValue(self.settings.placement.grid.wrap_at)
-		self.grid_main_interval.SetValue(self.settings.placement.grid.main_interval / SIZE_SCALE)
-		self.grid_cross_interval.SetValue(self.settings.placement.grid.cross_interval / SIZE_SCALE)
+
+		self.update_length_views()
 
 		@final
 		class InstancesAdapter(TreeControlBranchSelectionAdapter[SheetInstance]):
@@ -83,6 +83,16 @@ class CloneSettingsView(CloneSettingsViewDesign):
 			selection=this.settings.placement.grid.sort,
 		)
 
+		@final
+		class GridLengthUnitAdapter(StaticChoiceAdapter[UserUnits]):
+			def get_caption(self, item: UserUnits) -> str: return item.get_abbreviation()
+			def selection_changed(self): this.grid_length_unit_adapter_selection_changed()
+		self.grid_length_unit_adapter = GridLengthUnitAdapter(
+			control=self.grid_unit,
+			items=list(UserUnits),
+			selection=this.settings.placement.grid.length_unit,
+		)
+
 	def execute(self) -> Optional[CloneSettings]:
 		if CloneSettingsView.previous_instance is not None:
 			previous_instance = CloneSettingsView.previous_instance
@@ -116,6 +126,16 @@ class CloneSettingsView(CloneSettingsViewDesign):
 		self.settings.placement.grid.flow = self.grid_flow_direction_adapter.selection
 		self.model_changed()
 
+	def grid_length_unit_adapter_selection_changed(self) -> None:
+		self.settings.placement.grid.length_unit = self.grid_length_unit_adapter.selection
+		self.update_length_views()
+		self.model_changed()
+
+	def update_length_views(self) -> None:
+		user_unit = SizeUnits.get(self.settings.placement.grid.length_unit)
+		self.grid_main_interval.SetValue(self.settings.placement.grid.main_interval / user_unit)
+		self.grid_cross_interval.SetValue(self.settings.placement.grid.cross_interval / user_unit)
+
 	### Overrides
 
 	def instances_edit_veto(self, event: wx.Event):
@@ -137,6 +157,9 @@ class CloneSettingsView(CloneSettingsViewDesign):
 	def grid_flow_direction_changed(self, event: wx.Event):
 		pass  # Handled by adapter
 
+	def grid_unit_changed(self, event: wx.Event):
+		pass  # Handled by adapter
+
 	def grid_wrap_changed(self, event: wx.Event):
 		self.settings.placement.grid.wrap = self.grid_wrap.GetValue()
 		self.model_changed()
@@ -146,11 +169,13 @@ class CloneSettingsView(CloneSettingsViewDesign):
 		self.model_changed()
 
 	def grid_main_interval_changed(self, event: wx.Event):
-		self.settings.placement.grid.main_interval = int(self.grid_main_interval.GetValue() * SIZE_SCALE)
+		user_unit = SizeUnits.get(self.settings.placement.grid.length_unit)
+		self.settings.placement.grid.main_interval = int(self.grid_main_interval.GetValue() * user_unit)
 		self.model_changed()
 
 	def grid_cross_interval_changed(self, event: wx.Event):
-		self.settings.placement.grid.cross_interval = int(self.grid_cross_interval.GetValue() * SIZE_SCALE)
+		user_unit = SizeUnits.get(self.settings.placement.grid.length_unit)
+		self.settings.placement.grid.cross_interval = int(self.grid_cross_interval.GetValue() * user_unit)
 		self.model_changed()
 
 	def preview_button_clicked(self, event: wx.Event):
