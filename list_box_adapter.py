@@ -92,6 +92,8 @@ class StaticListBoxAdapter(Generic[ValueType], ListBoxAdapter[ValueType]):
 		return self.selection
 
 	def set_selected(self, items: Sequence[ValueType]) -> None:
+		if self.selection == list(items):
+			return
 		self.selection = list(items)
 		self.selection_changed()
 

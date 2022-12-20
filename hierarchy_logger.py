@@ -28,44 +28,45 @@ class HierarchyLogger():
 	def log_templates(self, hierarchy: Hierarchy) -> None:
 		logger = self.logger
 		for template in hierarchy.templates.values():
-			logger.info("Sheet template %s:", self.map_uuid(template.uuid))
-			logger.info("  Filename: %s", template.filename)
-			logger.info("")
+			logger.debug("Sheet template %s:", self.map_uuid(template.uuid))
+			logger.debug("  Filename: %s", template.filename)
+			logger.debug("")
 
 	def log_instances(self, hierarchy: Hierarchy) -> None:
 		logger = self.logger
 		for instance in hierarchy.instances.values():
-			logger.info("Sheet instance %s:", self.map_uuid(instance.uuid))
-			logger.info("  Name: %s", instance.name)
-			logger.info("  Template: %s (%s)", instance.template.filename, self.map_uuid(instance.template.uuid))
+			logger.debug("Sheet instance %s:", self.map_uuid(instance.uuid))
+			logger.debug("  Name: %s", instance.name)
+			logger.debug("  Template: %s (%s)", instance.template.filename, self.map_uuid(instance.template.uuid))
 			if instance.parent:
-				logger.info("  Parent: %s (%s)", instance.parent.name, self.map_uuid(instance.parent.uuid))
+				logger.debug("  Parent: %s (%s)", instance.parent.name, self.map_uuid(instance.parent.uuid))
 			else:
-				logger.info("  Parent: %s", "(none)")
-			logger.info("  Name path: %s", instance.name_path)
-			logger.info("  Uuid path: %s", self.map_uuidpath(instance.uuid_path))
-			logger.info("")
+				logger.debug("  Parent: %s", "(none)")
+			logger.debug("  Name path: %s", instance.name_path)
+			logger.debug("  Uuid path: %s", self.map_uuidpath(instance.uuid_path))
+			logger.debug("")
 
 	def log_symbols(self, hierarchy: Hierarchy) -> None:
 		logger = self.logger
 		for symbol in hierarchy.symbols.values():
-			logger.info("Symbol %s:", self.map_uuid(symbol.uuid))
-			logger.info("  Reference: %s:%s", symbol.reference, symbol.unit)
-			logger.info("  Value: %s", symbol.value)
-			logger.info("  Path: %s", self.map_uuidpath(symbol.path))
-			logger.info("  Sheet instance: %s", self.map_uuid(symbol.sheet_instance.uuid))
-			logger.info("  Footprints: %s", ", ".join(footprint.reference for footprint in hierarchy.symbol_instances[symbol]))
-			logger.info("")
+			logger.debug("Symbol %s:", self.map_uuid(symbol.uuid))
+			logger.debug("  Reference: %s:%s", symbol.reference, symbol.unit)
+			logger.debug("  Value: %s", symbol.value)
+			logger.debug("  Path: %s", self.map_uuidpath(symbol.path))
+			logger.debug("  Sheet: %s (%s)", symbol.sheet_template.filename, self.map_uuid(symbol.sheet_template.uuid))
+			logger.debug("  Footprints: %s", ", ".join(footprint.reference for footprint in hierarchy.symbol_instances[symbol]))
+			logger.debug("")
 
 	def log_footprints(self, hierarchy: Hierarchy) -> None:
 		logger = self.logger
 		for footprint in hierarchy.footprints.values():
-			logger.info("Footprint %s:", footprint.reference)
-			logger.info("  Reference: %s", footprint.reference)
-			logger.info("  Value: %s", footprint.value)
-			logger.info("  Path: %s", self.map_uuidpath(footprint.path))
-			logger.info("  Symbol: %s", self.map_uuid(footprint.symbol.uuid))
-			logger.info("")
+			logger.debug("Footprint %s:", footprint.reference)
+			logger.debug("  Reference: %s", footprint.reference)
+			logger.debug("  Value: %s", footprint.value)
+			logger.debug("  Path: %s", self.map_uuidpath(footprint.path))
+			logger.debug("  Symbol: %s", self.map_uuid(footprint.symbol.uuid))
+			logger.debug("  Sheet instance: %s (%s)", footprint.sheet_instance.name_path, self.map_uuid(footprint.sheet_instance.uuid))
+			logger.debug("")
 
 	def log_all(self, hierarchy: Hierarchy) -> None:
 		self.log_templates(hierarchy)

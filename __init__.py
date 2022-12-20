@@ -3,18 +3,18 @@ import os.path
 import tempfile
 
 from .error_handler import error_handler
+from .logging_config import LoggingConfig
 
 
 def init_root_logger():
-	for handler in logging.root.handlers[:]:
-		logging.root.removeHandler(handler)
 	logging.basicConfig(
-		level=logging.DEBUG,
+		level=LoggingConfig.level,
 		filename=os.path.join(tempfile.gettempdir(), "mark-plugin-root.log"),
 		filemode="w",
 		encoding="utf-8",
-		format="%(asctime)s %(name)s %(lineno)d:%(message)s",
-		datefmt="%Y-%m-%d %H:%M:%S",
+		format=LoggingConfig.format,
+		datefmt=LoggingConfig.datefmt,
+		force=True
 	)
 
 

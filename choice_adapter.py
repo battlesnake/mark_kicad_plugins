@@ -82,6 +82,8 @@ class StaticChoiceAdapter(Generic[ValueType], ChoiceAdapter[ValueType]):
 		return self.selection
 
 	def set_selected(self, item: ValueType) -> None:
+		if self.selection == item:
+			return
 		self.selection = item
 		self.selection_changed()
 

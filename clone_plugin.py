@@ -42,7 +42,7 @@ class ClonePlugin(Plugin):
 	def get_common_ancestor_of_footprints(self, footprints: Iterable[Footprint]) -> SheetInstance:
 		hierarchy = self.hierarchy
 		footprint_sheet_uuid_paths = set(
-			footprint.symbol.sheet_instance.uuid_path
+			footprint.sheet_instance.uuid_path
 			for footprint in footprints
 		)
 		common_ancestor_uuid_path = UuidPath.of(StringUtils.get_common_ancestor_of(footprint_sheet_uuid_paths))
@@ -88,7 +88,7 @@ class ClonePlugin(Plugin):
 
 		reference_footprint = selected_footprints[0]
 		reference_symbol = reference_footprint.symbol
-		reference_instance = reference_symbol.sheet_instance
+		reference_instance = reference_footprint.sheet_instance
 
 		self.logger.info("Reference footprint: %s", reference_footprint.reference)
 		self.logger.info("Reference footprint's symbol's sheet instance: %s", reference_instance.name_path)
@@ -101,49 +101,46 @@ class ClonePlugin(Plugin):
 
 		self.logger.info("Peer footprints: %s", ", ".join(symbol.reference for symbol in peer_footprints))
 
-		peer_instances = [
+		relevant_sheet_instances = [
 			hierarchy.instances[footprint.path[:-1]]
 			for footprint in peer_footprints
-			if footprint != reference_footprint
 		]
 
-		for instance in peer_instances:
-			self.logger.info("Peer sheet instances: %s", instance.name_path)
+		for instance in relevant_sheet_instances:
+			self.logger.debug("Peer sheet instances: %s", instance.name_path)
 
-		target_instances = set(
+		subcircuit_root_sheet_instances = set(
 			hierarchy.instances[
 				instance.uuid_path[0:-common_ancestor_up_levels]
 				if common_ancestor_up_levels > 0
 				else instance.uuid_path
 			]
-			for instance in peer_instances
+			for instance in relevant_sheet_instances
 		)
 
-		for instance in target_instances:
-			self.logger.info("Instance we can clone to: %s", instance.name_path)
+		for sheet_instance in subcircuit_root_sheet_instances:
+			self.logger.info("Sheet instance we can clone to: %s", sheet_instance.name_path)
 
-		selection_bboxes = [
+		selected_footprint_bboxes = [
 			footprint.data.GetBoundingBox(True, True)
 			for footprint in selected_footprints
 		]
 
-		selection_bbox_coords = [
+		selected_footprint_bbox_coords = [
 			(bbox.GetLeft(), bbox.GetTop(), bbox.GetRight(), bbox.GetBottom())
-			for bbox in selection_bboxes
-			if bbox.GetArea() > 0
+			for bbox in selected_footprint_bboxes
+			if bbox.GetWidth() > 0 and bbox.GetHeight() > 0
 		]
 
-		selection_bbox = reduce(
+		selected_subcircuit_bbox = reduce(
 			lambda a, b: (min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3])),
-			selection_bbox_coords
+			selected_footprint_bbox_coords
 		)
 
-		selection_bbox_width = selection_bbox[2] - selection_bbox[0]
-		selection_bbox_height = selection_bbox[3] - selection_bbox[1]
+		selection_bbox_width = selected_subcircuit_bbox[2] - selected_subcircuit_bbox[0]
+		selection_bbox_height = selected_subcircuit_bbox[3] - selected_subcircuit_bbox[1]
 
 		self.logger.info("Selection bounding-box: %sx%s", selection_bbox_width, selection_bbox_height)
-
-		selection_size = max(1, selection_bbox_width, selection_bbox_height)
 
 		user_unit = UserUnits(pcbnew.GetUserUnits())
 		length_unit = int({
@@ -152,10 +149,13 @@ class ClonePlugin(Plugin):
 			UserUnits.MIL: SizeUnits.PER_MIL * 100,
 		}[user_unit])
 
-		selection_size = length_unit * ceil(1 + 1.2 * selection_size / length_unit)
+		selection_size = (
+			length_unit * ceil(1 + 1.2 * selection_bbox_width / length_unit),
+			length_unit * ceil(1 + 1.2 * selection_bbox_height / length_unit),
+		)
 
 		settings = CloneSettings(
-			instances=set(target_instances),
+			instances=set(subcircuit_root_sheet_instances),
 			placement=ClonePlacementSettings(
 				strategy=ClonePlacementStrategyType.RELATIVE,
 				relative=ClonePlacementRelativeStrategySettings(
@@ -164,8 +164,8 @@ class ClonePlugin(Plugin):
 				grid=ClonePlacementGridStrategySettings(
 					sort=ClonePlacementGridSort.HIERARCHY,
 					flow=ClonePlacementGridFlow.ROW,
-					main_interval=selection_size,
-					cross_interval=selection_size,
+					main_interval=selection_size[0],
+					cross_interval=selection_size[1],
 					length_unit=user_unit,
 					wrap=False,
 					wrap_at=8,
@@ -177,7 +177,7 @@ class ClonePlugin(Plugin):
 
 		view = CloneSettingsView(
 			logger=logger,
-			instances=sorted(target_instances, key=lambda instance: instance.name_path), 
+			instances=sorted(subcircuit_root_sheet_instances, key=lambda instance: instance.name_path), 
 			footprints=sorted(selected_footprints, key=lambda footprint: footprint.reference),
 			controller=settings_controller,
 			settings=settings,

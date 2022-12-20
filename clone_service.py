@@ -10,6 +10,8 @@ from .hierarchy import Hierarchy
 from .placement import Placement
 from .clone_placement_strategy import ClonePlacementStrategy, ClonePlacementStrategyType, ClonePlacementChangeLog
 from .string_utils import StringUtils
+from .spinner import spin_while
+from .bored_user_entertainer import BoredUserEntertainer
 
 
 @final
@@ -38,15 +40,23 @@ class CloneService():
 	def can_revert(self) -> bool:
 		return self.change_log is not None
 
+	@spin_while
 	def revert_clone(self) -> None:
 		if self.change_log is None:
 			return
+
+		BoredUserEntertainer.message("Reverting changes...")
 		self.change_log.undo()
 		self.change_log = None
 
+		pcbnew.Refresh()
+
+	@spin_while
 	def clone_subcircuits(self, logger: Logger, hierarchy: Hierarchy, selection: CloneSelection, settings: CloneSettings) -> None:
 
 		logger = logger.getChild(type(self).__name__)
+
+		BoredUserEntertainer.message("Preparing to clone")
 
 		if settings.placement.strategy == ClonePlacementStrategyType.RELATIVE:
 			source_reference_footprint = settings.placement.relative.anchor.data
@@ -54,7 +64,7 @@ class CloneService():
 			source_reference_footprint = selection.source_footprints[0]
 
 		source_reference = hierarchy.footprints[UuidPath.of(source_reference_footprint.GetPath())]
-		logger.info("Source reference footprint: %s (%s)", source_reference.reference, source_reference.symbol.sheet_instance.name_path)
+		logger.info("Source reference footprint: %s (%s)", source_reference.reference, source_reference.sheet_instance.name_path)
 
 		selected_instances = settings.instances
 		for instance in selected_instances:
@@ -91,7 +101,11 @@ class CloneService():
 		# TODO: Option to clear target placement areas so we never create
 		# overlaps
 
-		for target_reference, target_reference_placement in placement_strategy:
+		clone_target_info = list(placement_strategy)
+
+		for index, (target_reference, target_reference_placement) in enumerate(clone_target_info):
+			BoredUserEntertainer.message(f"Cloning to {target_reference.reference}")
+			BoredUserEntertainer.progress(index, len(clone_target_info))
 			logger.info("Rendering target subcircuit around %s", target_reference.reference)
 			for source_footprint in selection.source_footprints:
 				source_path = UuidPath.of(source_footprint.GetPath())
@@ -126,4 +140,10 @@ class CloneService():
 					source_item=source_zone,
 				)
 
+		BoredUserEntertainer.message("Storing undo log")
+
 		self.change_log = placement_strategy.change_log
+
+		BoredUserEntertainer.message("Refreshing pcbnew...")
+		logger.info("Refreshing pcbnew")
+		pcbnew.Refresh()

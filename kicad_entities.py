@@ -147,7 +147,7 @@ class Symbol():
 	unit: int
 	value: str
 
-	sheet_instance: SheetInstance = field(hash=False, compare=False)
+	sheet_template: SheetTemplate = field(hash=False, compare=False)
 
 	def __str__(self) -> str:
 		return f"{self.reference}:{self.unit} ({self.value})"
@@ -160,6 +160,7 @@ class Footprint():
 	value: str
 
 	symbol: Symbol = field(hash=False, compare=False, repr=False)
+	sheet_instance: SheetInstance = field(hash=False, compare=False, repr=False)
 
 	data: pcbnew.FOOTPRINT = field(hash=False, compare=False, repr=False)
 

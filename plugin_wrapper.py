@@ -12,6 +12,9 @@ import pcbnew  # pyright: ignore
 from .plugin import Plugin
 from .plugin_metadata import PluginMetadata
 from .error_handler import error_handler, LoggedException
+from .logging_config import LoggingConfig
+from .spinner import spin_while
+from .bored_user_entertainer import BoredUserEntertainer
 
 
 class PluginWrapper(pcbnew.ActionPlugin, ABC):
@@ -43,11 +46,18 @@ class PluginWrapper(pcbnew.ActionPlugin, ABC):
 	def init_log_sink(self):
 		logger = logging.getLogger(type(self).__name__)
 		logger.setLevel(logging.DEBUG)
-		logger.addHandler(logging.FileHandler(
+		handler = logging.FileHandler(
 			filename=os.path.abspath(f"mark-plugin-{type(self).__name__}.log"),
 			mode="w",
 			encoding="utf-8",
-		))
+		)
+		formatter = logging.Formatter(
+			fmt=LoggingConfig.format,
+			datefmt=LoggingConfig.datefmt,
+		)
+		handler.setFormatter(formatter)
+		logger.addHandler(handler)
+		logger.setLevel(LoggingConfig.level)
 		return logger
 
 	@final
@@ -64,7 +74,9 @@ class PluginWrapper(pcbnew.ActionPlugin, ABC):
 			pass
 
 	@error_handler
+	@spin_while
 	def execute(self, logger: Logger, board: pcbnew.BOARD, filename: str) -> None:
+		BoredUserEntertainer.message("Inspecting environment...")
 		logger.info("Platform: %s", sys.platform)
 		logger.info("Python version: %s", sys.version)
 		logger.info("KiCad build version: %s", pcbnew.GetBuildVersion())
@@ -72,14 +84,13 @@ class PluginWrapper(pcbnew.ActionPlugin, ABC):
 		logger.info("Filename: %s", filename)
 		logger.info("Metadata: %s", asdict(self.get_metadata()))
 
+		BoredUserEntertainer.message("Starting plugin...")
 		logger.info("Instantiating plugin")
 		plugin = self.create_plugin(logger, board)
 		logger.info("Plugin: %s", plugin.__class__.__name__)
 
+		BoredUserEntertainer.message("Executing plugin...")
 		logger.info("Executing plugin")
 		plugin.execute()
-
-		logger.info("Refreshing pcbnew")
-		pcbnew.Refresh()
 
 		logger.info("Done")

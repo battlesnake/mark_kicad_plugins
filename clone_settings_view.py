@@ -124,6 +124,8 @@ class CloneSettingsView(CloneSettingsViewDesign):
 
 	def grid_flow_direction_adapter_selection_changed(self) -> None:
 		self.settings.placement.grid.flow = self.grid_flow_direction_adapter.selection
+		self.settings.placement.grid.main_interval, self.settings.placement.grid.cross_interval = self.settings.placement.grid.cross_interval, self.settings.placement.grid.main_interval
+		self.update_length_views()
 		self.model_changed()
 
 	def grid_length_unit_adapter_selection_changed(self) -> None:

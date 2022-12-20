@@ -9,6 +9,7 @@ from .linear_interpolate import LinearInterpolate
 from .anchor import Anchor
 from .user_exception import UserException
 from .plugin import Plugin
+from .bored_user_entertainer import BoredUserEntertainer
 
 
 @dataclass(frozen=True, eq=True)
@@ -118,3 +119,7 @@ class TextPlugin(Plugin):
 
 	def execute(self) -> None:
 		self.process_board()
+
+		BoredUserEntertainer.message("Refreshing pcbnew...")
+		self.logger.info("Refreshing pcbnew")
+		pcbnew.Refresh()
