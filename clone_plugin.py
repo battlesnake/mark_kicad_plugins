@@ -14,7 +14,6 @@ from .clone_service import CloneSelection
 from .clone_settings_controller import CloneSettingsController
 from .clone_settings_view import CloneSettingsView
 from .clone_settings import CloneSettings
-from .clone_placement_strategy import ClonePlacementChangeLog
 from .clone_placement_settings import ClonePlacementGridFlow, ClonePlacementGridSort, ClonePlacementGridStrategySettings, ClonePlacementRelativeStrategySettings, ClonePlacementSettings, ClonePlacementStrategyType
 from .user_exception import UserException
 
@@ -24,8 +23,6 @@ ItemType = TypeVar("ItemType", bound=pcbnew.BOARD_ITEM)
 
 @final
 class ClonePlugin(Plugin):
-
-	change_log: ClonePlacementChangeLog | None = None
 
 	@staticmethod
 	def path_to_str(path: pcbnew.KIID_PATH) -> str:

@@ -17,7 +17,7 @@ import wx.xrc
 class BoredUserEntertainerDesign ( wx.Frame ):
 
 	def __init__( self, parent ):
-		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"Mark's plugin", pos = wx.DefaultPosition, size = wx.Size( 400,100 ), style = wx.CAPTION|wx.FRAME_FLOAT_ON_PARENT|wx.FRAME_NO_TASKBAR|wx.SYSTEM_MENU|wx.TAB_TRAVERSAL )
+		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"Mark's plugin", pos = wx.DefaultPosition, size = wx.Size( 400,100 ), style = wx.CAPTION|wx.FRAME_NO_TASKBAR|wx.STAY_ON_TOP|wx.SYSTEM_MENU|wx.TAB_TRAVERSAL )
 
 		self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
 

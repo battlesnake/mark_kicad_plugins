@@ -8,10 +8,12 @@ from .clone_settings import CloneSettings
 from .kicad_entities import UuidPath
 from .hierarchy import Hierarchy
 from .placement import Placement
-from .clone_placement_strategy import ClonePlacementStrategy, ClonePlacementStrategyType, ClonePlacementChangeLog
+from .clone_placement_strategy import ClonePlacementStrategy, ClonePlacementStrategyType
 from .string_utils import StringUtils
 from .spinner import spin_while
 from .bored_user_entertainer import BoredUserEntertainer
+from .clone_transaction_builder import CloneTransactionBuilder
+from .clone_transaction import CloneTransaction
 
 
 @final
@@ -35,19 +37,19 @@ class CloneService():
 		return CloneService._inst
 
 	def __init__(self):
-		self.change_log: ClonePlacementChangeLog | None = None
+		self.transaction: CloneTransaction | None = None
 
 	def can_revert(self) -> bool:
-		return self.change_log is not None
+		return self.transaction is not None
 
 	@spin_while
 	def revert_clone(self) -> None:
-		if self.change_log is None:
+		if self.transaction is None:
 			return
 
 		BoredUserEntertainer.message("Reverting changes...")
-		self.change_log.undo()
-		self.change_log = None
+		self.transaction.revert()
+		self.transaction = None
 
 		pcbnew.Refresh()
 
@@ -101,12 +103,12 @@ class CloneService():
 		# TODO: Option to clear target placement areas so we never create
 		# overlaps
 
-		clone_target_info = list(placement_strategy)
+		transaction_builder = CloneTransactionBuilder()
 
-		for index, (target_reference, target_reference_placement) in enumerate(clone_target_info):
-			BoredUserEntertainer.message(f"Cloning to {target_reference.reference}")
-			BoredUserEntertainer.progress(index, len(clone_target_info))
-			logger.info("Rendering target subcircuit around %s", target_reference.reference)
+		BoredUserEntertainer.message("Planning clone operation")
+
+		for target_reference, target_reference_placement in placement_strategy:
+			logger.info("Planning clone of subcircuit around %s", target_reference.reference)
 			for source_footprint in selection.source_footprints:
 				source_path = UuidPath.of(source_footprint.GetPath())
 				target_reference_path = target_reference.path
@@ -115,34 +117,36 @@ class CloneService():
 				target_footprint = hierarchy.footprints[target_path]
 				logger.debug(f"Matched source %s to target %s", source_footprint, target_footprint)
 				# Apply placement
-				placement_strategy.apply_placement(
+				transaction_builder.add_item(
 					source_reference=source_reference_placement,
 					target_reference=target_reference_placement,
 					source_item=source_footprint.data,
 					target_item=target_footprint.data,
 				)
 			for source_track in selection.source_tracks:
-				placement_strategy.apply_placement(
+				transaction_builder.add_item(
 					source_reference=source_reference_placement,
 					target_reference=target_reference_placement,
 					source_item=source_track,
 				)
 			for source_drawing in selection.source_drawings:
-				placement_strategy.apply_placement(
+				transaction_builder.add_item(
 					source_reference=source_reference_placement,
 					target_reference=target_reference_placement,
 					source_item=source_drawing,
 				)
 			for source_zone in selection.source_zones:
-				placement_strategy.apply_placement(
+				transaction_builder.add_item(
 					source_reference=source_reference_placement,
 					target_reference=target_reference_placement,
 					source_item=source_zone,
 				)
 
-		BoredUserEntertainer.message("Storing undo log")
+		self.transaction = transaction_builder.build()
+		self.transaction.on_progress = BoredUserEntertainer.progress
 
-		self.change_log = placement_strategy.change_log
+		BoredUserEntertainer.message("Executing clone operation")
+		self.transaction.apply()
 
 		BoredUserEntertainer.message("Refreshing pcbnew...")
 		logger.info("Refreshing pcbnew")

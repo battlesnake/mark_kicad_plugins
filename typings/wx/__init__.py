@@ -17,6 +17,8 @@ OK: int
 EVT_LISTBOX: EventType
 EVT_CHOICE: EventType
 
+def Yield(): ...
+
 class EventHandler():
 	def Bind(self, event: EventType, handler: Callable[[Event], None]) -> None: ...
 

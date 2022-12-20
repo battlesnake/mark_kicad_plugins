@@ -48,7 +48,7 @@
             <property name="name">BoredUserEntertainerDesign</property>
             <property name="pos"></property>
             <property name="size">400,100</property>
-            <property name="style">wxCAPTION|wxFRAME_FLOAT_ON_PARENT|wxFRAME_NO_TASKBAR|wxSYSTEM_MENU</property>
+            <property name="style">wxCAPTION|wxFRAME_NO_TASKBAR|wxSTAY_ON_TOP|wxSYSTEM_MENU</property>
             <property name="subclass">; ; forward_declare</property>
             <property name="title">Mark&apos;s plugin</property>
             <property name="tooltip"></property>
