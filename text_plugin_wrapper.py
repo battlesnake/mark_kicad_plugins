@@ -20,4 +20,5 @@ class TextPluginWrapper(PluginWrapper):
 		return PluginMetadata(
 			name="Text to dedicated layers",
 			description="Assign references and values to dedicated layers (which must be created beforehand: Refs, Values)",
+			icon="footprint1.svg",
 		)

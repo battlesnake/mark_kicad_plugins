@@ -34,12 +34,14 @@ class PluginWrapper(pcbnew.ActionPlugin, ABC):
 
 	@final
 	def defaults(self) -> None:
+		def icon_path(name: str) -> str:
+			return os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon", name)
 		metadata = self.get_metadata()
 		self.name = metadata.name
 		self.description = metadata.description
 		self.category = metadata.category
-		self.icon_file_name = metadata.icon
-		self.dark_icon_file_name = metadata.icon
+		self.icon_file_name = icon_path(metadata.icon)
+		self.dark_icon_file_name = icon_path(metadata.icon)
 		self.show_toolbar_button = metadata.show_toolbar_button
 
 	@final
