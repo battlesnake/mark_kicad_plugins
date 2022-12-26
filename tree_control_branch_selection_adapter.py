@@ -1,4 +1,4 @@
-from typing import List, Set, Generic, TypeVar, Iterable, Optional, Dict, Callable, Sequence
+from typing import List, Set, Generic, TypeVar, Iterable, Optional, Dict, Callable, Sequence, Any
 from abc import ABC, abstractmethod
 from enum import Enum
 import wx
@@ -14,6 +14,11 @@ class TreeItemSelectionState(Enum):
 	SELECTED = "selected"
 	UNSELECTED = "unselected"
 	PARTIAL_SELECTED = "partial_selected"
+
+
+class TreeSelectionChangeMode(Enum):
+	SINGLE = "recursive"
+	PARALLEL = "parallel"
 
 
 class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
@@ -52,8 +57,21 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 
 	###
 
+	@abstractmethod
 	def get_view_text(self, item: ValueType) -> str:
-		return str(item)
+		# Text to display for item in UI
+		pass
+
+	@abstractmethod
+	def get_item_type_key(self, item: ValueType) -> Any:
+		# Value that identifies this item-type in the hierarchy, but but the
+		# specific instance.  Used for parallel-selection (alt+click).
+		pass
+
+	@abstractmethod
+	def get_item_sort_key(self, item: ValueType) -> Any:
+		# Value for comparing items to sort them in the UI
+		pass
 
 	@abstractmethod
 	def selection_changed(self):
@@ -83,6 +101,17 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 
 	def get_upwards(self, start: Iterable[ValueType]) -> Set[ValueType]:
 		return self.get_recursively(start, lambda item: [self.parents[item]] if item in self.parents else [])
+
+	def get_parallel_items(self, items: Iterable[ValueType]) -> Set[ValueType]:
+		names = {
+			self.get_item_type_key(item)
+			for item in items
+		}
+		return {
+			item
+			for item in self.items
+			if self.get_item_type_key(item) in names
+		}
 
 	###
 
@@ -121,7 +150,7 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 				if item in self.relations[model_start]
 			]
 			self.control.DeleteChildren(view_start)
-		for model_item in items:
+		for model_item in sorted(items, key=self.get_item_sort_key):
 			view_item: wx.dataview.DataViewItem
 			if model_item in self.relations:
 				view_item = self.control.AppendContainer(
@@ -142,7 +171,9 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 	def update_view_item(self, item: ValueType):
 		self.control.SetItemText(self.view_map[item], self.get_iconised_view_text(item))
 
-	def set_selected(self, items: Iterable[ValueType], state: bool):
+	def set_selected(self, items: Iterable[ValueType], state: bool, mode: TreeSelectionChangeMode):
+		if mode == TreeSelectionChangeMode.PARALLEL:
+			items = self.get_parallel_items(items)
 		leaves = self.get_leaves(items)
 		if state:
 			self.selection.update(leaves)
@@ -151,11 +182,11 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 		for item in self.get_upwards(items).union(self.get_downwards(items)):
 			self.update_view_item(item)
 
-	def toggle_selected(self, items: Sequence[ValueType]):
+	def toggle_selected(self, items: Sequence[ValueType], mode: TreeSelectionChangeMode):
 		if not items:
 			return
 		new_state = self.get_selection_state(items[0]) != TreeItemSelectionState.SELECTED
-		self.set_selected(items, new_state)
+		self.set_selected(items, new_state, mode)
 
 	def on_item_activated(self, event: wx.Event):
 		items: List[ValueType] = [
@@ -164,5 +195,9 @@ class TreeControlBranchSelectionAdapter(ABC, Generic[ValueType]):
 		]
 		if not items:
 			return
-		self.toggle_selected(items)
+		if wx.GetKeyState(wx.WXK_ALT):
+			mode = TreeSelectionChangeMode.PARALLEL
+		else:
+			mode = TreeSelectionChangeMode.SINGLE
+		self.toggle_selected(items, mode)
 		self.selection_changed()

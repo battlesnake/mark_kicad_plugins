@@ -17,6 +17,12 @@ OK: int
 EVT_LISTBOX: EventType
 EVT_CHOICE: EventType
 
+WXK_SHIFT: int
+WXK_CONTROL: int
+WXK_ALT: int
+
+def GetKeyState(key: int) -> bool: ...
+
 def Yield(): ...
 
 class EventHandler():

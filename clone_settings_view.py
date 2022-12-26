@@ -47,6 +47,9 @@ class CloneSettingsView(CloneSettingsViewDesign):
 		@final
 		class InstancesAdapter(TreeControlBranchSelectionAdapter[SheetInstance]):
 			def selection_changed(self): this.instances_adapter_selection_changed()
+			def get_view_text(self, item: SheetInstance): return str(item)
+			def get_item_type_key(self, item: SheetInstance): return item.name
+			def get_item_sort_key(self, item: SheetInstance): return item.name
 		self.instances_adapter = InstancesAdapter(
 			items=instances,
 			get_parent=lambda item: item.parent,
