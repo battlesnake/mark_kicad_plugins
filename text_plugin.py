@@ -1,5 +1,5 @@
 from typing import final, cast
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import functools
 
 import pcbnew  # pyright: ignore
@@ -27,7 +27,7 @@ class TextConfiguration():
 
 	anchor: Anchor = Anchor.C
 
-	spacing: Point = Point(-0.2, -0.2)
+	spacing: Point = field(default_factory=lambda: Point(-0.2, -0.2))
 
 	width: float = 0.2
 	height: float = 0.2
@@ -45,15 +45,15 @@ class TextConfiguration():
 @dataclass
 class TextPluginConfiguration():
 
-	reference: TextConfiguration = TextConfiguration(
+	reference: TextConfiguration = field(default_factory=lambda: TextConfiguration(
 		layer=LayerConfiguration(name="Refs", color="#00FF20FF"),
 		anchor=Anchor.N
-	)
+	))
 
-	value: TextConfiguration = TextConfiguration(
+	value: TextConfiguration = field(default_factory=lambda: TextConfiguration(
 		layer=LayerConfiguration(name="Values", color="#00D6FFFF"),
 		anchor=Anchor.S
-	)
+	))
 
 	size_scale: int = 1000000
 	angle_scale: int = 10
@@ -78,7 +78,7 @@ class TextPlugin(Plugin):
 			raise UserException(f"Layer \"{layer_name}\" not found in board, and I haven't implemented automatic setup of layers yet")
 		return layer_id
 
-	def process_text(self, text: pcbnew.FP_TEXT, text_configuration: TextConfiguration) -> None:
+	def process_text(self, text: pcbnew.PCB_FIELD, text_configuration: TextConfiguration) -> None:
 		footprint = cast(pcbnew.FOOTPRINT, text.GetParentFootprint().Cast())
 
 		text.SetLayer(self.find_or_create_layer(text_configuration.layer))
@@ -93,18 +93,18 @@ class TextPlugin(Plugin):
 
 		angle: int = self.calc_angle(text_configuration.angle)
 		if text_configuration.angle_is_absolute:
-			angle -= footprint.GetOrientation()
-		text.SetTextAngle(angle)
+			angle -= footprint.GetOrientation().AsTenthsOfADegree()
+		text.SetTextAngle(pcbnew.EDA_ANGLE(angle, pcbnew.TENTHS_OF_A_DEGREE_T))
 
 		text.SetBold(text_configuration.bold)
 		text.SetItalic(text_configuration.italic)
 
-		parent_box: pcbnew.EDA_RECT = footprint.GetBoundingBox(False, False)
+		parent_box: pcbnew.BOX2I = footprint.GetBoundingBox(False, False)
 		anchor = text_configuration.anchor.value
 		anchor_pt = LinearInterpolate.rectangle(parent_box, anchor)
 		anchor_pt.x += LinearInterpolate.space(self.calc_length(text_configuration.spacing.x), anchor.x)
 		anchor_pt.y += LinearInterpolate.space(self.calc_length(text_configuration.spacing.y), anchor.y)
-		text.SetPosition(pcbnew.wxPoint(
+		text.SetPosition(pcbnew.VECTOR2I(
 			int(anchor_pt.x),
 			int(anchor_pt.y)
 		))

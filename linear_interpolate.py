@@ -9,7 +9,7 @@ class LinearInterpolate():
 		return a + i * (b - a)
 
 	@staticmethod
-	def rectangle(rect: pcbnew.EDA_RECT, i: Point) -> Point:
+	def rectangle(rect: pcbnew.BOX2I, i: Point) -> Point:
 		return Point(
 			LinearInterpolate.scalar(rect.GetLeft(), rect.GetRight(), i.x),
 			LinearInterpolate.scalar(rect.GetTop(), rect.GetBottom(), i.y)
