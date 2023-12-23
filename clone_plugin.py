@@ -49,7 +49,7 @@ class ClonePlugin(Plugin):
 		board = self.board
 		hierarchy = self.hierarchy
 		return [
-			hierarchy.footprints[UuidPath.of(footprint.GetPath())]
+			hierarchy.get_footprint_by_pcb_path(footprint.GetPath())
 			for footprint in self.filter_selected(board.Footprints())
 		]
 
@@ -73,7 +73,7 @@ class ClonePlugin(Plugin):
 		)
 
 		selected_footprints = [
-			hierarchy.footprints[UuidPath.of(footprint.GetPath())]
+			hierarchy.get_footprint_by_pcb_path(footprint.GetPath())
 			for footprint in selection.source_footprints
 		]
 		if not selected_footprints:

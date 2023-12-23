@@ -1,4 +1,5 @@
-from typing import Optional, Sequence, Iterable, overload, final, Union
+import logging
+from typing import Optional, Sequence, Iterable, overload, final, Union, cast
 from dataclasses import dataclass, field
 from uuid import UUID
 from functools import cached_property
@@ -6,6 +7,9 @@ from functools import cached_property
 import pcbnew  # pyright: ignore
 
 from .kicad_sexp_parser import KicadSexpNode
+
+
+logger = logging.getLogger(__name__)
 
 
 Filename = str
@@ -50,22 +54,24 @@ class UuidPath(Sequence[UUID]):
 
 	@overload
 	@staticmethod
+	def of(value: str) -> "UuidPath": ...
+
+	@overload
+	@staticmethod
 	def of(value: Iterable[UUID]) -> "UuidPath": ...
 
 	@overload
 	@staticmethod
 	def of(value: pcbnew.KIID_PATH) -> "UuidPath": ...
 
-	@overload
-	@staticmethod
-	def of(value: str) -> "UuidPath": ...
-
 	@staticmethod
 	def of(value: Iterable[UUID] | pcbnew.KIID_PATH | str) -> "UuidPath":
-		if isinstance(value, pcbnew.KIID_PATH):
+		# Can't use instanceof due to multiple runtime instantiations of
+		# type KIID_PATH in Kicad 7.99
+		if type(value).__name__ == "KIID_PATH":
 			return UuidPath.of(
 				UUID(hex=str(item.AsString()))
-				for item in value
+				for item in cast(pcbnew.KIID_PATH, value)
 			)
 		elif isinstance(value, str):
 			return UuidPath.of(
@@ -119,7 +125,7 @@ class SheetInstance():
 	@cached_property
 	def uuid_chain(self) -> Sequence[UUID]:
 		if self.parent is None:
-			return []
+			return [self.uuid]
 		else:
 			return list(self.parent.uuid_chain) + [self.uuid]
 
@@ -141,13 +147,14 @@ class SheetInstance():
 
 @dataclass(frozen=True, eq=True)
 class Symbol():
-	path: UuidPath
 	uuid: UUID
+	path: UuidPath
 	reference: Reference
 	unit: int
 	value: str
 
 	sheet_template: SheetTemplate = field(hash=False, compare=False)
+	sheet_instance: Optional[SheetInstance] = field(hash=False, compare=False)
 
 	def __str__(self) -> str:
 		return f"{self.reference}:{self.unit} ({self.value})"

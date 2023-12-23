@@ -65,7 +65,7 @@ class CloneService():
 		else:
 			source_reference_footprint = selection.source_footprints[0]
 
-		source_reference = hierarchy.footprints[UuidPath.of(source_reference_footprint.GetPath())]
+		source_reference = hierarchy.get_footprint_by_pcb_path(source_reference_footprint.GetPath())
 		logger.info("Source reference footprint: %s (%s)", source_reference.reference, source_reference.sheet_instance.name_path)
 
 		selected_instances = settings.instances
@@ -110,7 +110,7 @@ class CloneService():
 		for target_reference, target_reference_placement in placement_strategy:
 			logger.info("Planning clone of subcircuit around %s", target_reference.reference)
 			for source_footprint in selection.source_footprints:
-				source_path = UuidPath.of(source_footprint.GetPath())
+				source_path = hierarchy.get_path_from_pcb_path(source_footprint.GetPath())
 				target_reference_path = target_reference.path
 				target_path = target_reference_path[:-1] + source_path[-1]
 				source_footprint = hierarchy.footprints[source_path]

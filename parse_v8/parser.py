@@ -1,73 +1,13 @@
+""" Parse Kicad-style s-expression files """
+
 from typing import List, Sequence, Optional
-from dataclasses import dataclass
 import logging
+
+from node import Node
+from selection import Selection
 
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True, eq=True)
-class KicadSexpNode():
-
-	""" Parse Kicad-style s-expression files """
-
-	key: str
-	values: Sequence[str]
-	children: Sequence["KicadSexpNode"]
-
-	def __getattr__(self, key: str) -> "KicadSexpNode":
-		items = self[key]
-		if not items:
-			logger.info("Keys on this node: %s", ", ".join(child.key for child in self.children))
-			raise KeyError(f"No values for key {key}")
-		if len(items) > 1:
-			raise KeyError(f"Multiple values for key {key}")
-		return items[0]
-
-	def query_children(self, key: str, filter_field: int, filter_value: str) -> Sequence["KicadSexpNode"]:
-		items = [
-			child
-			for child in self.children
-			if child.key == key
-			if len(child.values) > filter_field
-			if child.values[filter_field] == filter_value
-		]
-		return items
-
-	def query_child(self, key: str, filter_field: int, filter_value: str) -> Optional["KicadSexpNode"]:
-		items = self.query_children(key, filter_field, filter_value)
-		if not items:
-			return None
-		if len(items) > 1:
-			raise KeyError(f"Multiple values for key {key} with field #{filter_field} = <{filter_value}>")
-		item = items[0]
-		return item
-
-	def query_child_field(self, key: str, filter_field: int, filter_value: str, return_field: int) -> Optional[str]:
-		item = self.query_child(key, filter_field, filter_value)
-		if item is None:
-			return item
-		return item.values[return_field]
-
-	def __getitem__(self, key: str) -> Sequence["KicadSexpNode"]:
-		return [
-			child
-			for child in self.children
-			if child.key == key
-		]
-
-	def __str_lines__(self, indent: int) -> Sequence[str]:
-		INDENT = "  "
-		result = []
-		result.append(INDENT * indent + f"{self.key}:")
-		for value in self.values:
-			result.append(INDENT * indent + INDENT + f"- {value}")
-		for child in self.children:
-			result += child.__str_lines__(indent + 1)
-		return result
-
-	def __str__(self) -> str:
-		return "\n".join(self.__str_lines__(0))
 
 
 class StringIterator():
@@ -115,7 +55,7 @@ class StringIterator():
 			raise ValueError(f"Expected one of «{chars}» at index {self.it} but found «{actual}»")
 
 
-class KicadSexpParser():
+class Parser():
 
 	WHITESPACE = " \t\n\r"
 	EXPR_BEGIN = "("
@@ -159,13 +99,13 @@ class KicadSexpParser():
 		else:
 			raise ValueError(f"Expected value at index {it.it} but found whitespace")
 
-	def parse_node(self, it: StringIterator) -> KicadSexpNode:
+	def parse_node(self, it: StringIterator) -> Node:
 		it.expect(self.EXPR_BEGIN)
 		it.next()
 		it.skip(self.WHITESPACE)
 		key = self.parse_value(it)
 		values: List[str] = []
-		children: List[KicadSexpNode] = []
+		children: List[Node] = []
 		it.skip(self.WHITESPACE)
 		while (char := it.peek()) != self.EXPR_END:
 			if char == self.EXPR_BEGIN:
@@ -174,25 +114,26 @@ class KicadSexpParser():
 				values.append(self.parse_value(it))
 			it.skip(self.WHITESPACE)
 		it.next()
-		return KicadSexpNode(key=key, values=tuple(values), children=tuple(children))
+		return Node(key=key, values=tuple(values), children=tuple(children))
 
 
-	def parse(self, text: str, root_values: Optional[Sequence[str]] = None) -> KicadSexpNode:
+	def parse(self, text: str, root_values: Optional[Sequence[str]] = None) -> Selection:
 		try:
 			it = StringIterator(text, 0, len(text))
 			it.skip(self.WHITESPACE)
 			result = self.parse_node(it)
 			it.skip(self.WHITESPACE)
-			return KicadSexpNode(
+			root = Node(
 				key="(root)",
 				values=tuple([] if root_values is None else root_values),
 				children=tuple([result]),
 			)
+			return Selection(nodes=[root])
 		except StopIteration as exc:
 			raise ValueError("Unexpected end of expression") from exc
 
 
-	def parse_file(self, path: str) -> KicadSexpNode:
+	def parse_file(self, path: str) -> Selection:
 		with open(path, "r", encoding="utf-8") as fp:
 			text = fp.read()
 		return self.parse(text, root_values=[path])
