@@ -14,6 +14,24 @@ from parser import Parser
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True, eq=True)
+class SymbolReference():
+    reference: str
+    unit: int
+    multi_unit: bool
+
+    def __str__(self):
+        if not self.multi_unit:
+            return self.reference
+        unit = self.unit
+        unit -= 1
+        parts: List[str] = []
+        while unit > 0 or not parts:
+            parts += [chr(ord("A") + unit % 26)]
+            unit //= 26
+        return self.reference + "".join(reversed(parts))
+
+
 @dataclass
 class SheetDefinition():
     id: EntityPathComponent = field(compare=True, hash=True)
@@ -38,10 +56,8 @@ class SymbolDefinition():
     in_bom: bool
     on_board: bool
     dnp: bool
-    reference: str
-    unit: int
+    reference: SymbolReference
     value: str
-    multi_unit: bool
 
 
 @dataclass
@@ -49,8 +65,7 @@ class SymbolInstance():
     sheet: SheetInstance
     definition: SymbolDefinition
     path: EntityPath = field(compare=True, hash=True)
-    reference: str
-    unit: int
+    reference: SymbolReference
 
 
 @dataclass
@@ -237,7 +252,7 @@ class SchematicLoader():
                 reference = symbol_node.property.filter(0, "Reference")[1]
                 unit = int(symbol_node.unit[0])
                 value = symbol_node.property.filter(0, "Value")[0]
-                logger.info("Reading symbol definition: %s / %s / %s", id, library_id, value)
+                logger.info("Reading symbol definition: %s / %s / %s", symbol_id, library_id, value)
                 library_info = sheet_node.lib_symbols.symbol.filter(0, library_id)
                 multi_unit = len([
                     ...
@@ -252,10 +267,12 @@ class SchematicLoader():
                     in_bom=in_bom,
                     on_board=on_board,
                     dnp=dnp,
-                    reference=reference,
-                    unit=unit,
+                    reference=SymbolReference(
+                        reference=reference,
+                        unit=unit,
+                        multi_unit=multi_unit,
+                    ),
                     value=value,
-                    multi_unit=multi_unit,
                 )
                 self.symbol_definitions.append(symbol_definition)
                 assert symbol_id not in self.symbol_metadata
@@ -281,16 +298,16 @@ class SchematicLoader():
         for symbol_definition in self.symbol_definitions:
             metadata = self.symbol_metadata[symbol_definition.id]
             for symbol_instance_metadata in metadata.instances:
-                logger.info(
-                    "Reading symbol instance: %s%s",
-                    symbol_instance_metadata.reference,
-                    chr(ord("A") + symbol_instance_metadata.unit - 1) if symbol_definition.multi_unit else "",
+                symbol_reference = SymbolReference(
+                    reference=symbol_instance_metadata.reference,
+                    unit=symbol_instance_metadata.unit,
+                    multi_unit=symbol_definition.reference.multi_unit,
                 )
+                logger.info("Reading symbol instance: %s", symbol_reference)
                 symbol_instance = SymbolInstance(
                     definition=symbol_definition,
                     path=symbol_instance_metadata.path,
-                    reference=symbol_instance_metadata.reference,
-                    unit=symbol_instance_metadata.unit,
+                    reference=symbol_reference,
                     sheet=sheet_map[symbol_instance_metadata.path[:-1]],
                 )
                 self.symbol_instances.append(symbol_instance)
