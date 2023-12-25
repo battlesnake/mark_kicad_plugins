@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, List, Self, Sequence, Union, overload
+from typing import Any, List, Sequence, Union, overload
 from uuid import UUID
 
 
@@ -22,16 +22,15 @@ class EntityPathComponent():
 class EntityPath(Sequence[EntityPathComponent]):
     parts: Sequence[EntityPathComponent]
 
-    @classmethod
-    def parse(cls, path: str):
+    @staticmethod
+    def parse(path: str):
         if path.startswith("/"):
             path = path[1:]
-        parts = [
+        return EntityPath(parts=[
             EntityPathComponent.parse(part)
             for index, part in enumerate(path.split("/"))
             if not (part == "" and index == 0)
-        ]
-        return cls(parts=parts)
+        ])
 
     def __iter__(self):
         return iter(self.parts)
@@ -55,10 +54,12 @@ class EntityPath(Sequence[EntityPathComponent]):
         )
 
     @overload
-    def __getitem__(self, index_or_slice: int) -> EntityPathComponent: ...
+    def __getitem__(self, index_or_slice: int) -> EntityPathComponent:
+        ...
 
     @overload
-    def __getitem__(self, index_or_slice: slice) -> Self: ...
+    def __getitem__(self, index_or_slice: slice) -> "EntityPath":
+        ...
 
     def __getitem__(self, index_or_slice: Union[int, slice]):
         if isinstance(index_or_slice, int):
@@ -82,21 +83,21 @@ class EntityPath(Sequence[EntityPathComponent]):
         )
 
     @overload
-    def __add__(self, suffix: EntityPathComponent) -> Self:
+    def __add__(self, suffix: EntityPathComponent) -> "EntityPath":
         ...
 
     @overload
-    def __add__(self, suffix: Sequence[EntityPathComponent]) -> Self:
+    def __add__(self, suffix: Sequence[EntityPathComponent]) -> "EntityPath":
         ...
 
-    def __add__(self, suffix: EntityPathComponent | Sequence[EntityPathComponent]) -> Self:
+    def __add__(self, suffix: EntityPathComponent | Sequence[EntityPathComponent]) -> "EntityPath":
         """ Concatenate """
         if isinstance(suffix, EntityPathComponent):
             return self + [suffix]
         else:
             return EntityPath(parts=list(self) + list(suffix))
 
-    def __bitand__(self, other: "EntityPath"):
+    def __bitand__(self, other: "EntityPath") -> "EntityPath":
         """ Common prefix """
         prefix: List[EntityPathComponent] = []
         for a, b in zip(self, other):
