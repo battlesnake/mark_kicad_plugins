@@ -80,6 +80,7 @@ class Selection():
 
     def __str__(self):
         indent = "  "
+
         def stringify(node: Node, level: int) -> List[str]:
             return (
                 [
@@ -90,6 +91,7 @@ class Selection():
                     for line in stringify(child, level + 1)
                 ]
             )
+
         return "\n".join([
             line
             for node in self.nodes

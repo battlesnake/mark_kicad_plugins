@@ -1,15 +1,31 @@
 from dataclasses import dataclass
 from typing import Any, List, Sequence, Union, overload
 from uuid import UUID
+from pcbnew import KIID, KIID_PATH
 
 
 @dataclass(frozen=True, eq=True)
 class EntityPathComponent():
     value: UUID
 
+    @overload
     @staticmethod
     def parse(value: str):
-        return EntityPathComponent(UUID(hex=value))
+        ...
+
+    @overload
+    @staticmethod
+    def parse(value: KIID):
+        ...
+
+    @staticmethod
+    def parse(value: Union[str, KIID]):
+        if isinstance(value, str):
+            return EntityPathComponent(UUID(hex=value))
+        elif isinstance(value, KIID):
+            return EntityPathComponent.parse(value.AsString())
+        else:
+            raise ValueError()
 
     def __str__(self):
         return str(self.value)
@@ -22,15 +38,30 @@ class EntityPathComponent():
 class EntityPath(Sequence[EntityPathComponent]):
     parts: Sequence[EntityPathComponent]
 
+    @overload
     @staticmethod
     def parse(path: str):
-        if path.startswith("/"):
-            path = path[1:]
-        return EntityPath(parts=[
-            EntityPathComponent.parse(part)
-            for index, part in enumerate(path.split("/"))
-            if not (part == "" and index == 0)
-        ])
+        ...
+
+    @overload
+    @staticmethod
+    def parse(path: KIID_PATH):
+        ...
+
+    @staticmethod
+    def parse(path: Union[str, KIID_PATH]):
+        if isinstance(path, str):
+            if path.startswith("/"):
+                path = path[1:]
+            return EntityPath(parts=[
+                EntityPathComponent.parse(part)
+                for index, part in enumerate(path.split("/"))
+                if not (part == "" and index == 0)
+            ])
+        elif isinstance(path, KIID_PATH):
+            return EntityPath.parse(path.AsString())
+        else:
+            raise ValueError()
 
     def __iter__(self):
         return iter(self.parts)
