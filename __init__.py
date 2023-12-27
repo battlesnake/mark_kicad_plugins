@@ -2,8 +2,8 @@ import logging
 import os.path
 import tempfile
 
-from .error_handler import error_handler
-from .logging_config import LoggingConfig
+from utils.error_handler import error_handler
+from utils.logging_config import LoggingConfig
 
 
 def init_root_logger():
@@ -20,8 +20,8 @@ def init_root_logger():
 
 @error_handler
 def load_plugins():
-	from .text_plugin_wrapper import TextPluginWrapper  # pyright: ignore
-	from .clone_plugin_wrapper import ClonePluginWrapper  # pyright: ignore
+	from denoise_text.text_plugin_wrapper import TextPluginWrapper  # pyright: ignore
+	from clone_placement.clone_plugin_wrapper import ClonePluginWrapper  # pyright: ignore
 
 	TextPluginWrapper().register()
 	ClonePluginWrapper().register()

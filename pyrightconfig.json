@@ -1,9 +1,12 @@
 {
-	"include": "*.py",
+	"include": [
+		"*.py",
+		"**/*.py"
+	],
 	"ignore": [
 		"*_design.py"
 	],
-	"pythonVersion": "3.10.8",
+	"pythonVersion": "3.11",
 	"pythonPlatform": "Linux",
 	"typeCheckingMode": "strict",
 	"reportUnknownParameterType": false,

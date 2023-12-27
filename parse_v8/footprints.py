@@ -23,17 +23,12 @@ class LayoutParser():
         self.read_footprints()
 
     def read_footprints(self):
-        sheet_instances = {
-            sheet_instance.path: sheet_instance
-            for sheet_instance in self.schematic.sheet_instances
-        }
         symbol_instances = {
             symbol_instance.path: symbol_instance
             for symbol_instance in self.schematic.symbol_instances
         }
         for pcbnew_footprint in self.board.Footprints():
             path = EntityPath(pcbnew_footprint.GetPath())
-            sheet_instance = sheet_instances[path[:-1]]
             symbol_instance = symbol_instances[path]
             footprint = Footprint(
                 pcbnew_footprint=pcbnew_footprint,
