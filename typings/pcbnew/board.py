@@ -1,4 +1,8 @@
-from typing import Any
+from typing import Any, Iterable
+
+from footprint import FOOTPRINT
+from pcb_track import PCB_TRACK
+from pcb_group import PCB_GROUP
 
 from board_item_container import BOARD_ITEM_CONTAINER
 
@@ -18,19 +22,19 @@ class BOARD(BOARD_ITEM_CONTAINER):
 	def GetTimeStamp(self) -> Any:
 		...
 
-	def IsFootprintHolder(self) -> Any:
+	def IsFootprintHolder(self) -> bool:
 		...
 
-	def SetFileName(self, aFileName) -> Any:
+    def SetFileName(self, aFileName: Str) -> None:
 		...
 
-	def GetFileName(self) -> Any:
+	def GetFileName(self) -> str:
 		...
 
-	def Tracks(self, *args) -> Any:
+	def Tracks(self, *args) -> Iterable[PCB_TRACK]:
 		...
 
-	def Footprints(self, *args) -> Any:
+	def Footprints(self, *args) -> Iterable[FOOTPRINT]:
 		...
 
 	def Drawings(self, *args) -> Any:
@@ -42,7 +46,7 @@ class BOARD(BOARD_ITEM_CONTAINER):
 	def Markers(self, *args) -> Any:
 		...
 
-	def Groups(self, *args) -> Any:
+	def Groups(self, *args) -> Iterable[PCB_GROUP]:
 		...
 
 	def AllConnectedItems(self) -> Any:
@@ -57,7 +61,7 @@ class BOARD(BOARD_ITEM_CONTAINER):
 	def ResolveTextVar(self, token, aDepth) -> Any:
 		...
 
-	def IsEmpty(self) -> Any:
+	def IsEmpty(self) -> bool:
 		...
 
 	def SetFileFormatVersionAtLoad(self, aVersion) -> Any:
@@ -70,12 +74,6 @@ class BOARD(BOARD_ITEM_CONTAINER):
 		...
 
 	def GetGenerator(self) -> Any:
-		...
-
-	def AddNative(self, *args) -> Any:
-		...
-
-	def RemoveNative(self, *args) -> Any:
 		...
 
 	def FinalizeBulkAdd(self, aNewItems) -> Any:
