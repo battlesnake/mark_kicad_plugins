@@ -3,7 +3,7 @@ import logging
 from .schematic import SchematicLoader
 
 
-if __name__ == "__main__":
+def run():
     import yaml
     logging.basicConfig(level=logging.DEBUG)
     schematic = SchematicLoader.load("/home/mark/projects/big-audio-interface/kicad/main.kicad_sch")

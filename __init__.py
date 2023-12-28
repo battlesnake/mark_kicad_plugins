@@ -30,13 +30,12 @@ def load_plugins():
 
 init_root_logger()
 try:
+	# Test if running in Kicad
+	import pcbnew
 	load_plugins()
+except ModuleNotFoundError:
+	# Not running in pcbnew, skip
+	pass
 except:
-	try:
-		# Test if running in Kicad
-		import pcbnew
-		# error_handler took care of reporting already
-		sys.exit(0)
-	except ModuleNotFoundError:
-		pass
+	# Running in pcbnew, re-raise
 	raise

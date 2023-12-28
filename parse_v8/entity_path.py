@@ -1,7 +1,18 @@
 from dataclasses import dataclass
 from typing import Any, List, Sequence, Union, overload
 from uuid import UUID
-from pcbnew import KIID, KIID_PATH
+
+try:
+    from pcbnew import KIID, KIID_PATH
+except ModuleNotFoundError:
+
+    class KIID():
+        def AsString(self):
+            return ""
+
+    class KIID_PATH():
+        def AsString(self):
+            return ""
 
 
 @dataclass(frozen=True, eq=True)
@@ -121,7 +132,7 @@ class EntityPath(Sequence[EntityPathComponent]):
     def __add__(self, suffix: Sequence[EntityPathComponent]) -> "EntityPath":
         ...
 
-    def __add__(self, suffix: EntityPathComponent | Sequence[EntityPathComponent]) -> "EntityPath":
+    def __add__(self, suffix: Union[EntityPathComponent, Sequence[EntityPathComponent]]) -> "EntityPath":
         """ Concatenate """
         if isinstance(suffix, EntityPathComponent):
             return self + [suffix]

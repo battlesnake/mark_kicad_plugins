@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # User-friendly symbol / component references
 
 
-COMPONENT_REFERENCE_VALIDATOR = re.compile(r"^([A-Z]+)([0-9]+)$")
+COMPONENT_REFERENCE_VALIDATOR = re.compile(r"^(#?[A-Z]+)([0-9]+)$")
 
 
 @dataclass(frozen=True, eq=True)
@@ -87,19 +87,25 @@ class SheetInstance():
 @dataclass
 class SymbolDefinition():
 	sheet: SheetDefinition
-	id: EntityPathComponent = field(compare=True, hash=True)
+	id: EntityPathComponent
 	reference: SymbolReference  # Reference in own sheet file, not in schematic/layout
 	instances: List["SymbolInstance"]
 	component: "ComponentDefinition" = field(init=False)
+
+	def __hash__(self):
+		return hash(self.id)
 
 
 @dataclass
 class SymbolInstance():
 	sheet: SheetInstance
 	definition: SymbolDefinition
-	path: EntityPath = field(compare=True, hash=True)
+	path: EntityPath
 	reference: SymbolReference
 	component: "ComponentInstance" = field(init=False)
+
+	def __hash__(self):
+		return hash(self.path)
 
 
 @dataclass
@@ -113,12 +119,18 @@ class ComponentDefinition():
 	dnp: bool
 	instances: List["ComponentInstance"]
 
+	def __hash__(self):
+		return id(self)
+
 
 @dataclass
 class ComponentInstance():
 	definition: ComponentDefinition
 	reference: ComponentReference
 	units: List[SymbolInstance]
+
+	def __hash__(self):
+		return hash(self.reference)
 
 
 # Internal metadata classes to store temporary info and relations while reading
@@ -370,7 +382,7 @@ class SchematicLoader():
 						SymbolInstanceMetadata(
 							node=~symbol_node,
 							path=EntityPath.parse(path_node[0]) + symbol_id,
-							designator=path_node.designator[0],
+							designator=path_node.reference[0],
 							unit=int(path_node.unit[0]),
 						)
 						for path_node in symbol_node.instances.project.filter(0, self.project).path
