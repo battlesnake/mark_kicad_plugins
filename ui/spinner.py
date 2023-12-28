@@ -1,4 +1,5 @@
 from typing import Callable, TypeVar
+
 from .bored_user_entertainer import BoredUserEntertainer
 
 

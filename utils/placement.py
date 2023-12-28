@@ -1,7 +1,7 @@
 from typing import final
 from dataclasses import dataclass
 
-import pcbnew  # pyright: ignore
+from pcbnew import BOARD_ITEM, FOOTPRINT, VECTOR2I
 
 
 @final
@@ -13,8 +13,8 @@ class Placement():
 	flipped: bool
 
 	@staticmethod
-	def of(item: pcbnew.BOARD_ITEM) -> "Placement":
-		if isinstance(item, pcbnew.FOOTPRINT):  # Also PAD, but we don't consider those yet
+	def of(item: BOARD_ITEM) -> "Placement":
+		if isinstance(item, FOOTPRINT):  # Also PAD, but we don't consider those yet
 			position = item.GetPosition()
 			return Placement(
 				x=position.x,
@@ -33,8 +33,8 @@ class Placement():
 			)
 
 	@property
-	def position(self) -> pcbnew.wxPoint:
-		return pcbnew.wxPoint(
-			self.x,
-			self.y
+	def position(self):
+		return VECTOR2I(
+			x=self.x,
+			y=self.y
 		)

@@ -4,18 +4,16 @@ from dataclasses import dataclass
 
 import pcbnew  # pyright: ignore
 
-from schematic import UuidPath, Schematic
+from ..utils.placement import Placement
+from ..utils.string_utils import StringUtils
 
-from utils.placement import Placement
-from utils.string_utils import StringUtils
+from ..ui.spinner import spin_while
+from ..ui.bored_user_entertainer import BoredUserEntertainer
 
-from ui.spinner import spin_while
-from ui.bored_user_entertainer import BoredUserEntertainer
-
-from clone_placement.settings import CloneSettings
-from clone_placement.placement_strategy import ClonePlacementStrategy, ClonePlacementStrategyType
-from clone_placement.transaction_builder import CloneTransactionBuilder
-from clone_placement.transaction import CloneTransaction
+from .settings import CloneSettings
+from .placement_strategy import ClonePlacementStrategy, ClonePlacementStrategyType
+from .transaction_builder import CloneTransactionBuilder
+from .transaction import CloneTransaction
 
 
 @final

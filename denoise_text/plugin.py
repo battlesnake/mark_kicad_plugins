@@ -1,17 +1,54 @@
+from enum import Enum
 from typing import final, cast
 from dataclasses import dataclass, field
 import functools
 
 import pcbnew  # pyright: ignore
 
-from utils.point import Point
-from utils.linear_interpolate import LinearInterpolate
-from utils.anchor import Anchor
-from utils.user_exception import UserException
+from ..utils.user_exception import UserException
 
-from ui.bored_user_entertainer import BoredUserEntertainer
+from ..ui.bored_user_entertainer import BoredUserEntertainer
 
-from denoise_text.plugin import Plugin
+from ..plugin import Plugin
+
+
+@dataclass
+class Point():
+	x: float
+	y: float
+
+
+class LinearInterpolate():
+
+	@staticmethod
+	def scalar(a: float, b: float, i: float) -> float:
+		return a + i * (b - a)
+
+	@staticmethod
+	def rectangle(rect: pcbnew.BOX2I, i: Point) -> Point:
+		return Point(
+			LinearInterpolate.scalar(rect.GetLeft(), rect.GetRight(), i.x),
+			LinearInterpolate.scalar(rect.GetTop(), rect.GetBottom(), i.y)
+		)
+
+	@staticmethod
+	def space(amount: float, i: float) -> float:
+		return LinearInterpolate.scalar(-amount, amount, i)
+
+
+class Anchor(Enum):
+
+	C = Point(0.5, 0.5)
+
+	N = Point(0.5, 0.0)
+	W = Point(0.0, 0.5)
+	S = Point(0.5, 1.0)
+	E = Point(1.0, 0.5)
+
+	NW = Point(0.0, 0.0)
+	SW = Point(0.0, 1.0)
+	SE = Point(1.0, 1.0)
+	NE = Point(1.0, 0.0)
 
 
 @dataclass(frozen=True, eq=True)

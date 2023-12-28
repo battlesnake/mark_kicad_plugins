@@ -4,18 +4,19 @@ from math import ceil
 
 import pcbnew  # pyright: ignore
 
-from utils.kicad_units import UserUnits, SizeUnits
-from utils.user_exception import UserException
-from utils.string_utils import StringUtils
+from ..utils.kicad_units import UserUnits, SizeUnits
+from ..utils.user_exception import UserException
+from ..utils.string_utils import StringUtils
 
-from schematic import SheetInstance, Footprint, UuidPath, SchematicParser
+from ..parse_v8 import SheetInstance, Footprint, EntityPath, SchematicParser
 
-from clone_placement.plugin import Plugin
-from clone_placement.service import CloneSelection
-from clone_placement.settings_controller import CloneSettingsController
-from clone_placement.settings_view import CloneSettingsView
-from clone_placement.settings import CloneSettings
-from clone_placement.placement_settings import ClonePlacementGridFlow, ClonePlacementGridSort, ClonePlacementGridStrategySettings, ClonePlacementRelativeStrategySettings, ClonePlacementSettings, ClonePlacementStrategyType
+from ..plugin import Plugin
+
+from .service import CloneSelection
+from .settings_controller import CloneSettingsController
+from .settings_view import CloneSettingsView
+from .settings import CloneSettings
+from .placement_settings import ClonePlacementGridFlow, ClonePlacementGridSort, ClonePlacementGridStrategySettings, ClonePlacementRelativeStrategySettings, ClonePlacementSettings, ClonePlacementStrategyType
 
 
 ItemType = TypeVar("ItemType", bound=pcbnew.BOARD_ITEM)
@@ -25,16 +26,12 @@ ItemType = TypeVar("ItemType", bound=pcbnew.BOARD_ITEM)
 class ClonePlugin(Plugin):
 
 	@staticmethod
-	def path_to_str(path: pcbnew.KIID_PATH) -> str:
-		return "".join(f"/{uuid.AsString()}" for uuid in path)
-
-	@staticmethod
 	def filter_selected(items: Iterable[ItemType]) -> List[ItemType]:
 		return [
 			item
 			for item in items
-		if item.IsSelected()
-	]
+			if item.IsSelected()
+		]
 
 	def get_common_ancestor_of_footprints(self, footprints: Iterable[Footprint]) -> SheetInstance:
 		hierarchy = self.hierarchy
@@ -42,7 +39,7 @@ class ClonePlugin(Plugin):
 			footprint.sheet_instance.uuid_path
 			for footprint in footprints
 		)
-		common_ancestor_uuid_path = UuidPath.of(StringUtils.get_common_ancestor_of(footprint_sheet_uuid_paths))
+		common_ancestor_uuid_path = EntityPath.parse(StringUtils.get_common_ancestor_of(footprint_sheet_uuid_paths))
 		return hierarchy.instances[common_ancestor_uuid_path]
 
 	def get_selected_footprints(self) -> List[Footprint]:

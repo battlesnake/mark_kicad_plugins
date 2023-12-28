@@ -10,11 +10,13 @@ import os.path
 import pcbnew  # pyright: ignore
 
 from .plugin import Plugin
-from .plugin_metadata import PluginMetadata
-from .error_handler import error_handler, LoggedException
-from .logging_config import LoggingConfig
-from .spinner import spin_while
-from .bored_user_entertainer import BoredUserEntertainer
+from .metadata import PluginMetadata
+
+from ..utils.error_handler import error_handler, LoggedException
+from ..utils.logging_config import LoggingConfig
+
+from ..ui.spinner import spin_while
+from ..ui.bored_user_entertainer import BoredUserEntertainer
 
 
 class PluginWrapper(pcbnew.ActionPlugin, ABC):

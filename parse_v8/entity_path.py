@@ -10,16 +10,16 @@ class EntityPathComponent():
 
     @overload
     @staticmethod
-    def parse(value: str):
+    def parse(value: str) -> "EntityPathComponent":
         ...
 
     @overload
     @staticmethod
-    def parse(value: KIID):
+    def parse(value: KIID) -> "EntityPathComponent":
         ...
 
     @staticmethod
-    def parse(value: Union[str, KIID]):
+    def parse(value: Union[str, KIID]) -> "EntityPathComponent":
         if isinstance(value, str):
             return EntityPathComponent(UUID(hex=value))
         elif isinstance(value, KIID):
@@ -40,16 +40,16 @@ class EntityPath(Sequence[EntityPathComponent]):
 
     @overload
     @staticmethod
-    def parse(path: str):
+    def parse(path: str) -> "EntityPath":
         ...
 
     @overload
     @staticmethod
-    def parse(path: KIID_PATH):
+    def parse(path: KIID_PATH) -> "EntityPath":
         ...
 
     @staticmethod
-    def parse(path: Union[str, KIID_PATH]):
+    def parse(path: Union[str, KIID_PATH]) -> "EntityPath":
         if isinstance(path, str):
             if path.startswith("/"):
                 path = path[1:]
@@ -92,7 +92,7 @@ class EntityPath(Sequence[EntityPathComponent]):
     def __getitem__(self, index_or_slice: slice) -> "EntityPath":
         ...
 
-    def __getitem__(self, index_or_slice: Union[int, slice]):
+    def __getitem__(self, index_or_slice: Union[int, slice]) -> Union["EntityPath", EntityPathComponent]:
         if isinstance(index_or_slice, int):
             return self.parts[index_or_slice]
         else:

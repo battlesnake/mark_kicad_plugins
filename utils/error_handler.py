@@ -1,11 +1,12 @@
-from typing import TypeVar, Callable
+from typing import TypeVar, Callable, Any
 from functools import wraps
 import traceback
 import logging
+import wx
 
-from ui.message_box import MessageBox
+from ..ui.message_box import MessageBox
 
-from utils.user_exception import UserException
+from .user_exception import UserException
 
 
 ReturnType = TypeVar("ReturnType")
@@ -16,8 +17,9 @@ class LoggedException(Exception):
 
 
 def error_handler(func: Callable[..., ReturnType]) -> Callable[..., ReturnType]:
+
 	@wraps(func)
-	def wrapper(*args: ..., **kwargs: ...) -> ReturnType:
+	def wrapper(*args: Any, **kwargs: Any) -> ReturnType:
 		try:
 			try:
 				return func(*args, **kwargs)
@@ -36,6 +38,15 @@ def error_handler(func: Callable[..., ReturnType]) -> Callable[..., ReturnType]:
 			else:
 				logger = logging.getLogger(f"error_handler @ {repr(func)}")
 			logger.error("Operation failed: %s", diagnostic)
-			MessageBox.alert(f"Operation failed: {error.message}\n\nFor more information, check the log-files in your project directory or temp directory for more information")
+			# Handle differently depending on whether we're running in Kicad
+			print(diagnostic)
+			try:
+				import pcbnew
+				MessageBox.alert(f"Operation failed: {error.message}\n\nFor more information, check the log-files in your project directory or temp directory for more information")
+			except ModuleNotFoundError:
+				app = wx.App(False)
+				MessageBox.alert(f"Operation failed: {error.message}\n\n{diagnostic}")
+				app.MainLoop()
 			raise LoggedException() from error
+
 	return wrapper

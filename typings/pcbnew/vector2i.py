@@ -3,6 +3,9 @@ from typing import Union, overload
 
 class VECTOR2I():
 
+    x: int
+    y: int
+
     @overload
     def __init__(self):
         ...

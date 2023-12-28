@@ -1,13 +1,11 @@
-from typing import final
+from typing import Optional, final
 from dataclasses import dataclass
 from enum import Enum
 from abc import ABC, abstractmethod
 
-import pcbnew  # pyright: ignore
+from ..utils.kicad_units import UserUnits
 
-from utils.kicad_units import UserUnits
-
-from schematic import Footprint
+from ..parse_v8 import Footprint
 
 
 class ClonePlacementStrategySettings(ABC):
@@ -20,7 +18,7 @@ class ClonePlacementStrategySettings(ABC):
 @final
 @dataclass
 class ClonePlacementRelativeStrategySettings(ClonePlacementStrategySettings):
-	anchor: Footprint
+	anchor: Optional[Footprint]
 
 	def is_valid(self) -> bool:
 		return self.anchor is not None
@@ -48,8 +46,14 @@ class ClonePlacementGridStrategySettings(ClonePlacementStrategySettings):
 	wrap_at: int
 
 	def is_valid(self) -> bool:
-		return self.main_interval > 0 and \
-				(not self.wrap or (self.wrap_at > 0 and self.cross_interval > 0))
+		return (
+			self.main_interval > 0 and (
+				not self.wrap or (
+					self.wrap_at > 0 and
+					self.cross_interval > 0
+				)
+			)
+		)
 
 
 class ClonePlacementStrategyType(Enum):

@@ -1,13 +1,11 @@
 from typing import final, Sequence, Iterator, Tuple, Callable, Dict, List
 from abc import ABC, abstractmethod
 
-import pcbnew  # pyright: ignore
+from ..parse_v8 import Footprint
 
-from schematic import Footprint
+from ..utils.placement import Placement
 
-from utils.placement import Placement
-
-from clone_placement.placement_settings import ClonePlacementGridFlow, ClonePlacementGridSort, ClonePlacementGridStrategySettings, ClonePlacementRelativeStrategySettings, ClonePlacementStrategyType, ClonePlacementSettings
+from .placement_settings import ClonePlacementGridFlow, ClonePlacementGridSort, ClonePlacementGridStrategySettings, ClonePlacementRelativeStrategySettings, ClonePlacementStrategyType, ClonePlacementSettings
 
 
 PlacementResult = Tuple[Footprint, Placement]
@@ -39,7 +37,7 @@ class ClonePlacementRelativeStrategy(ClonePlacementStrategy):
 
 	def __next__(self) -> PlacementResult:
 		target = next(self.targets)
-		placement = Placement.of(target.data)
+		placement = Placement.of(target.pcbnew_footprint)
 		return target, placement
 
 
@@ -48,16 +46,21 @@ class ClonePlacementGridStrategy(ClonePlacementStrategy):
 
 	@staticmethod
 	def compare_footprint_by_reference(footprint: Footprint) -> List[str | int]:
-		ref = int("".join([
+		""" Key-function for sorting footprints (number, then type) """
+		number = int("".join(
 			ch
-			for ch in footprint.reference
+			for ch in footprint.symbol_instance.reference.designator
 			if ch.isdigit()
-		]) + "0")
-		return [ref, footprint.reference]
+		) or "0")
+		return [
+			number,
+			footprint.reference.designator
+		]
 
 	@staticmethod
 	def compare_footprint_by_hierarchy(footprint: Footprint) -> List[str | int]:
-		return list(footprint.sheet_instance.name_chain)
+		""" Key-function for sorting footprints """
+		return list(footprint.symbol_instance.sheet.path)
 
 	def __init__(self, settings: ClonePlacementGridStrategySettings, reference: Footprint, targets: Sequence[Footprint]):
 		super().__init__()

@@ -12,16 +12,33 @@ class Footprint():
     symbol_instance: SymbolInstance
 
 
-class LayoutParser():
+@dataclass
+class Layout():
+    schematic: Schematic
+    footprints: List[Footprint]
+
+
+class LayoutLoader():
 
     board: BOARD
+    schematic: Schematic
 
     footprints: List[Footprint]
+
+    @staticmethod
+    def load(board: BOARD, schematic: Schematic):
+        return LayoutLoader(board, schematic).get_result()
 
     def __init__(self, board: BOARD, schematic: Schematic):
         self.board = board
         self.schematic = schematic
         self.read_footprints()
+
+    def get_result(self):
+        return Layout(
+            schematic=self.schematic,
+            footprints=self.footprints,
+        )
 
     def read_footprints(self):
         symbol_instances = {

@@ -3,11 +3,11 @@ from logging import Logger
 
 import pcbnew  # pyright: ignore
 
-from plugin.plugin import Plugin
-from plugin.plugin_wrapper import PluginWrapper
-from plugin.plugin_metadata import PluginMetadata
+from ..plugin import Plugin
+from ..plugin import PluginWrapper
+from ..plugin import PluginMetadata
 
-from denoise_text.text_plugin import TextPlugin
+from .plugin import TextPlugin
 
 
 @final

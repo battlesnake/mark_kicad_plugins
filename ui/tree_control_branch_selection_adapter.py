@@ -4,7 +4,7 @@ from enum import Enum
 import wx
 import wx.dataview
 
-from .multi_map import MultiMap
+from ..utils.multi_map import MultiMap
 
 
 ValueType = TypeVar("ValueType")
