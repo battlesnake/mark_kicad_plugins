@@ -1,6 +1,7 @@
 from typing import Union, overload
-from eda_angle import EDA_ANGLE
-from vector2i import VECTOR2I
+
+from .eda_angle import EDA_ANGLE
+from .vector2i import VECTOR2I
 
 
 class BOX2I():

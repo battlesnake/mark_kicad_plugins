@@ -1,7 +1,7 @@
 from typing import Any
 
-from eda_item import EDA_ITEM
-from eda_text import EDA_TEXT
+from .eda_item import EDA_ITEM
+from .eda_text import EDA_TEXT
 
 
 # TOOD

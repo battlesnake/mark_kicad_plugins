@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from typing import List
 from pcbnew import BOARD, FOOTPRINT
 
-from schematic import Schematic, SymbolInstance
-from entity_path import EntityPath
+from .schematic import Schematic, SymbolInstance
+from .entity_path import EntityPath
 
 
 @dataclass

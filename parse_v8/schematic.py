@@ -5,10 +5,10 @@ import os
 from pathlib import Path
 from typing import Callable, Dict, List
 
-from entity_path import EntityPath, EntityPathComponent
-from node import Node
-from selection import Selection
-from parser import Parser
+from .entity_path import EntityPath, EntityPathComponent
+from .node import Node
+from .selection import Selection
+from .parser import Parser
 
 
 logger = logging.getLogger(__name__)

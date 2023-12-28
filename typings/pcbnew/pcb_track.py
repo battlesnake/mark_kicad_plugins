@@ -1,5 +1,6 @@
 from typing import Any
-from board_connected_item import BOARD_CONNECTED_ITEM
+
+from .board_connected_item import BOARD_CONNECTED_ITEM
 
 
 # TODO

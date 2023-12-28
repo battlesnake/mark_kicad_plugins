@@ -1,5 +1,6 @@
 import logging
-from schematic import SchematicLoader
+
+from .schematic import SchematicLoader
 
 
 if __name__ == "__main__":

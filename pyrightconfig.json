@@ -12,5 +12,6 @@
 	"reportUnknownParameterType": false,
 	"reportUnknownVariableType": false,
 	"reportUnknownMemberType": false,
-	"reportUnnecessaryIsInstance": false
+	"reportUnnecessaryIsInstance": false,
+    "stubPath": "./typings/"
 }

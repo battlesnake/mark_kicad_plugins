@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Iterator, List, Sequence, Set
 
-from node import Node
+from .node import Node
 
 
 @dataclass
@@ -10,9 +10,9 @@ class Selection():
 
     def _get_one(self) -> Node:
         if not self.nodes:
-            raise KeyError(f"No nodes in selection")
+            raise KeyError("No nodes in selection")
         if len(self.nodes) > 1:
-            raise KeyError(f"Multiple nodes in selection")
+            raise KeyError("Multiple nodes in selection")
         return self.nodes[0]
 
     def __invert__(self):

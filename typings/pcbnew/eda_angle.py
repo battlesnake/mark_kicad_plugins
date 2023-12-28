@@ -1,4 +1,4 @@
-from typing import Type, Union, overload
+from typing import Union, overload
 
 
 class _TENTHS_OF_A_DEGREE_T():
@@ -136,6 +136,3 @@ class EDA_ANGLE():
     m_Angle180: "EDA_ANGLE"
     m_Angle270: "EDA_ANGLE"
     m_Angle360: "EDA_ANGLE"
-
-
-from vector2i import VECTOR2I

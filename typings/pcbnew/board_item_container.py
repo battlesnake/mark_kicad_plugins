@@ -1,4 +1,4 @@
-from board_item import BOARD_ITEM
+from .board_item import BOARD_ITEM
 
 
 class BOARD_ITEM_CONTAINER(BOARD_ITEM):

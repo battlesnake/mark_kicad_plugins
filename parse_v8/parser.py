@@ -3,8 +3,8 @@
 from typing import List, Sequence, Optional
 import logging
 
-from node import Node
-from selection import Selection
+from .node import Node
+from .selection import Selection
 
 
 logger = logging.getLogger(__name__)

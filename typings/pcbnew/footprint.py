@@ -1,5 +1,6 @@
 from typing import Any
-from board_item_container import BOARD_ITEM_CONTAINER
+
+from .board_item_container import BOARD_ITEM_CONTAINER
 
 
 # TODO

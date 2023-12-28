@@ -1,6 +1,6 @@
-from eda_angle import EDA_ANGLE
-from vector2i import VECTOR2I
-from eda_item import EDA_ITEM
+from .eda_angle import EDA_ANGLE
+from .vector2i import VECTOR2I
+from .eda_item import EDA_ITEM
 
 
 class BOARD_ITEM(EDA_ITEM):

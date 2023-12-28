@@ -1,8 +1,8 @@
 from typing import Sequence, overload
 
-from kicad_t import KICAD_T
-from vector2i import VECTOR2I
-from box2i import BOX2I
+from .kicad_t import KICAD_T
+from .vector2i import VECTOR2I
+from .box2i import BOX2I
 
 
 EDA_ITEM_FLAGS = int

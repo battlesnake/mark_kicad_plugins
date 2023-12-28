@@ -1,5 +1,6 @@
 from typing import Any
-from pcb_track import PCB_TRACK
+
+from .pcb_track import PCB_TRACK
 
 
 # TODO
