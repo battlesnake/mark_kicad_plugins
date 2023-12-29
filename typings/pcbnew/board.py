@@ -222,13 +222,13 @@ class BOARD(BOARD_ITEM_CONTAINER):
     def ConvertBrdLayerToPolygonalContours(self, aLayer, aOutlines) -> Any:
         ...
 
-    def GetLayerID(self, aLayerName) -> Any:
+    def GetLayerID(self, aLayerName: str) -> Any:
         ...
 
-    def GetLayerName(self, aLayer) -> Any:
+    def GetLayerName(self, aLayer) -> str:
         ...
 
-    def SetLayerName(self, aLayer, aLayerName) -> Any:
+    def SetLayerName(self, aLayer, aLayerName: str) -> Any:
         ...
 
     def SetLayerDescr(self, aIndex, aLayer) -> Any:

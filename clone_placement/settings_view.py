@@ -4,20 +4,18 @@ from logging import Logger
 import wx
 import wx.dataview
 
-import pcbnew  # pyright: ignore
+from ..utils.kicad_units import UserUnits, SizeUnits
 
-from utils.kicad_units import UserUnits, SizeUnits
+from ..parse_v8 import SheetInstance, Footprint
 
-from schematic import SheetInstance, Footprint
+from ..ui.list_box_adapter import StaticListBoxAdapter
+from ..ui.choice_adapter import StaticChoiceAdapter
+from ..ui.tree_control_branch_selection_adapter import TreeControlBranchSelectionAdapter
 
-from ui.list_box_adapter import StaticListBoxAdapter
-from ui.choice_adapter import StaticChoiceAdapter
-from ui.tree_control_branch_selection_adapter import TreeControlBranchSelectionAdapter
-
-from clone_placement.placement_settings import ClonePlacementStrategyType, ClonePlacementGridFlow, ClonePlacementGridSort
-from clone_placement.settings import CloneSettings
-from clone_placement.settings_view_design import CloneSettingsViewDesign
-from clone_placement.settings_controller import CloneSettingsController
+from .placement_settings import ClonePlacementStrategyType, ClonePlacementGridFlow, ClonePlacementGridSort
+from .settings import CloneSettings
+from .settings_view_design import CloneSettingsViewDesign
+from .settings_controller import CloneSettingsController
 
 
 @final
@@ -49,10 +47,19 @@ class CloneSettingsView(CloneSettingsViewDesign):
 
 		@final
 		class InstancesAdapter(TreeControlBranchSelectionAdapter[SheetInstance]):
-			def selection_changed(self): this.instances_adapter_selection_changed()
-			def get_view_text(self, item: SheetInstance): return str(item)
-			def get_item_type_key(self, item: SheetInstance): return item.name
-			def get_item_sort_key(self, item: SheetInstance): return item.name
+
+			def selection_changed(self):
+				this.instances_adapter_selection_changed()
+
+			def get_view_text(self, item: SheetInstance):
+				return str(item)
+
+			def get_item_type_key(self, item: SheetInstance):
+				return item.name
+
+			def get_item_sort_key(self, item: SheetInstance):
+				return item.name
+
 		self.instances_adapter = InstancesAdapter(
 			items=instances,
 			get_parent=lambda item: item.parent,
@@ -62,7 +69,10 @@ class CloneSettingsView(CloneSettingsViewDesign):
 
 		@final
 		class RelativeAnchorAdapter(StaticListBoxAdapter[Footprint]):
-			def selection_changed(self): this.relative_anchor_adapter_selection_changed()
+
+			def selection_changed(self):
+				this.relative_anchor_adapter_selection_changed()
+
 		self.relative_anchor_adapter = RelativeAnchorAdapter(
 			control=self.relative_anchor,
 			items=footprints,
@@ -71,8 +81,13 @@ class CloneSettingsView(CloneSettingsViewDesign):
 
 		@final
 		class GridFlowDirectionAdapter(StaticChoiceAdapter[ClonePlacementGridFlow]):
-			def get_caption(self, item: ClonePlacementGridFlow) -> str: return item.value
-			def selection_changed(self): this.grid_flow_direction_adapter_selection_changed()
+
+			def get_caption(self, item: ClonePlacementGridFlow) -> str:
+				return item.value
+
+			def selection_changed(self):
+				this.grid_flow_direction_adapter_selection_changed()
+
 		self.grid_flow_direction_adapter = GridFlowDirectionAdapter(
 			control=self.grid_flow_direction,
 			items=list(ClonePlacementGridFlow),
@@ -81,8 +96,13 @@ class CloneSettingsView(CloneSettingsViewDesign):
 
 		@final
 		class GridSortAdapter(StaticChoiceAdapter[ClonePlacementGridSort]):
-			def get_caption(self, item: ClonePlacementGridSort) -> str: return item.value
-			def selection_changed(self): this.grid_sort_adapter_selection_changed()
+
+			def get_caption(self, item: ClonePlacementGridSort) -> str:
+				return item.value
+
+			def selection_changed(self):
+				this.grid_sort_adapter_selection_changed()
+
 		self.grid_sort_adapter = GridSortAdapter(
 			control=self.grid_sort,
 			items=list(ClonePlacementGridSort),
@@ -91,8 +111,13 @@ class CloneSettingsView(CloneSettingsViewDesign):
 
 		@final
 		class GridLengthUnitAdapter(StaticChoiceAdapter[UserUnits]):
-			def get_caption(self, item: UserUnits) -> str: return item.get_abbreviation()
-			def selection_changed(self): this.grid_length_unit_adapter_selection_changed()
+
+			def get_caption(self, item: UserUnits) -> str:
+				return item.get_abbreviation()
+
+			def selection_changed(self):
+				this.grid_length_unit_adapter_selection_changed()
+
 		self.grid_length_unit_adapter = GridLengthUnitAdapter(
 			control=self.grid_unit,
 			items=list(UserUnits),
@@ -144,7 +169,7 @@ class CloneSettingsView(CloneSettingsViewDesign):
 		self.grid_main_interval.SetValue(self.settings.placement.grid.main_interval / user_unit)
 		self.grid_cross_interval.SetValue(self.settings.placement.grid.cross_interval / user_unit)
 
-	### Overrides
+	# Overrides
 
 	def instances_edit_veto(self, event: wx.Event):
 		event.Veto()

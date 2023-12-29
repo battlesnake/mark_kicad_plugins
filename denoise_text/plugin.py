@@ -3,7 +3,8 @@ from typing import final, cast
 from dataclasses import dataclass, field
 import functools
 
-import pcbnew  # pyright: ignore
+import pcbnew
+from pcbnew import BOX2I, FOOTPRINT, EDA_ANGLE, VECTOR2I, TENTHS_OF_A_DEGREE_T, PCB_TEXT
 
 from ..utils.user_exception import UserException
 
@@ -25,7 +26,7 @@ class LinearInterpolate():
 		return a + i * (b - a)
 
 	@staticmethod
-	def rectangle(rect: pcbnew.BOX2I, i: Point) -> Point:
+	def rectangle(rect: BOX2I, i: Point) -> Point:
 		return Point(
 			LinearInterpolate.scalar(rect.GetLeft(), rect.GetRight(), i.x),
 			LinearInterpolate.scalar(rect.GetTop(), rect.GetBottom(), i.y)
@@ -112,13 +113,13 @@ class TextPlugin(Plugin):
 	@functools.cache
 	def find_or_create_layer(self, layer_configuration: LayerConfiguration) -> int:
 		layer_name = layer_configuration.name
-		layer_id = self.board.GetLayerID(cast(pcbnew.wxString, layer_name))
+		layer_id = self.board.GetLayerID(layer_name)
 		if layer_id == -1:
 			raise UserException(f"Layer \"{layer_name}\" not found in board, and I haven't implemented automatic setup of layers yet")
 		return layer_id
 
-	def process_text(self, text: pcbnew.PCB_FIELD, text_configuration: TextConfiguration) -> None:
-		footprint = cast(pcbnew.FOOTPRINT, text.GetParentFootprint().Cast())
+	def process_text(self, text: PCB_TEXT, text_configuration: TextConfiguration) -> None:
+		footprint = cast(FOOTPRINT, text.GetParentFootprint().Cast())
 
 		text.SetLayer(self.find_or_create_layer(text_configuration.layer))
 
@@ -133,22 +134,22 @@ class TextPlugin(Plugin):
 		angle: int = self.calc_angle(text_configuration.angle)
 		if text_configuration.angle_is_absolute:
 			angle -= footprint.GetOrientation().AsTenthsOfADegree()
-		text.SetTextAngle(pcbnew.EDA_ANGLE(angle, pcbnew.TENTHS_OF_A_DEGREE_T))
+		text.SetTextAngle(EDA_ANGLE(angle, TENTHS_OF_A_DEGREE_T))
 
 		text.SetBold(text_configuration.bold)
 		text.SetItalic(text_configuration.italic)
 
-		parent_box: pcbnew.BOX2I = footprint.GetBoundingBox(False, False)
+		parent_box: BOX2I = footprint.GetBoundingBox(False, False)
 		anchor = text_configuration.anchor.value
 		anchor_pt = LinearInterpolate.rectangle(parent_box, anchor)
 		anchor_pt.x += LinearInterpolate.space(self.calc_length(text_configuration.spacing.x), anchor.x)
 		anchor_pt.y += LinearInterpolate.space(self.calc_length(text_configuration.spacing.y), anchor.y)
-		text.SetPosition(pcbnew.VECTOR2I(
+		text.SetPosition(VECTOR2I(
 			int(anchor_pt.x),
 			int(anchor_pt.y)
 		))
 
-	def process_footprint(self, footprint: pcbnew.FOOTPRINT) -> None:
+	def process_footprint(self, footprint: FOOTPRINT) -> None:
 		self.process_text(footprint.Reference(), self.configuration.reference)
 		self.process_text(footprint.Value(), self.configuration.value)
 

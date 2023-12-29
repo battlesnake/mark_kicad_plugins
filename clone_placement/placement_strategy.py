@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 from ..parse_v8 import Footprint
 
-from ..utils.placement import Placement
+from .placement import Placement
 
 from .placement_settings import ClonePlacementGridFlow, ClonePlacementGridSort, ClonePlacementGridStrategySettings, ClonePlacementRelativeStrategySettings, ClonePlacementStrategyType, ClonePlacementSettings
 
@@ -54,21 +54,26 @@ class ClonePlacementGridStrategy(ClonePlacementStrategy):
 		) or "0")
 		return [
 			number,
-			footprint.reference.designator
+			footprint.symbol_instance.reference.designator
 		]
 
 	@staticmethod
 	def compare_footprint_by_hierarchy(footprint: Footprint) -> List[str | int]:
 		""" Key-function for sorting footprints """
-		return list(footprint.symbol_instance.sheet.path)
+		result: List[str] = []
+		sheet = footprint.symbol_instance.sheet
+		while sheet is not None:
+			result.append(sheet.name)
+			sheet = sheet.parent
+		return list(reversed(result))
 
 	def __init__(self, settings: ClonePlacementGridStrategySettings, reference: Footprint, targets: Sequence[Footprint]):
 		super().__init__()
 		comparators: Dict[ClonePlacementGridSort, Callable[[Footprint], List[str | int]]] = {
-				ClonePlacementGridSort.REFERENCE: self.compare_footprint_by_reference,
-				ClonePlacementGridSort.HIERARCHY: self.compare_footprint_by_hierarchy,
+			ClonePlacementGridSort.REFERENCE: self.compare_footprint_by_reference,
+			ClonePlacementGridSort.HIERARCHY: self.compare_footprint_by_hierarchy,
 		}
-		self.reference = Placement.of(reference.data)
+		self.reference = Placement.of(reference.pcbnew_footprint)
 		self.targets = sorted(targets, key=comparators[settings.sort]).__iter__()
 		self.settings = settings
 		self.main: int = 0

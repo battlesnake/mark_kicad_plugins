@@ -1,10 +1,9 @@
 from typing import Set
 from dataclasses import dataclass
 
-import pcbnew  # pyright: ignore
+from ..parse_v8 import SheetInstance
 
-from schematic import SheetInstance
-from clone_placement.placement_settings import ClonePlacementSettings
+from .placement_settings import ClonePlacementSettings
 
 
 @dataclass

@@ -2,12 +2,12 @@ from typing import final, List, Callable
 from abc import ABC, abstractmethod
 from math import copysign
 
-import pcbnew  # pyright: ignore
+from pcbnew import EDA_ANGLE, DEGREE_T, BOARD_ITEM, FOOTPRINT
 
-from utils.kicad_units import RotationUnits
-from utils.user_exception import UserException
+from ..utils.kicad_units import RotationUnits
+from ..utils.user_exception import UserException
 
-from clone_placement.placement import Placement
+from .placement import Placement
 
 
 class CloneTransactionOperator(ABC):
@@ -24,11 +24,13 @@ class CloneTransactionOperator(ABC):
 	def revert(self) -> None:
 		pass
 
-	def internal_apply_displacement(self, target_item: pcbnew.BOARD_ITEM) -> None:
+	def internal_apply_displacement(self, target_item: BOARD_ITEM) -> None:
 		# Assumes that target item is at same location/angle/side as source item
 		def clamp_angle(angle: float):
-			while angle > 180: angle -= 360
-			while angle < -180: angle += 360
+			while angle > 180:
+				angle -= 360
+			while angle < -180:
+				angle += 360
 			return angle
 		source_reference_placement = self.source_reference_placement
 		target_reference_placement = self.target_reference_placement
@@ -41,17 +43,17 @@ class CloneTransactionOperator(ABC):
 			flipped_angle = copysign(180 - abs(source_angle), source_angle)
 			rotation = 180 - flipped_angle - target_reference_placement.angle
 		rotation += target_reference_placement.angle - source_reference_placement.angle
-		target_item.Rotate(target_reference_placement.position, int(rotation * RotationUnits.PER_DEGREE))
+		target_item.Rotate(target_reference_placement.position, EDA_ANGLE(rotation, DEGREE_T))
 
 
 @final
 class CloneTransactionTransferFootprintPlacementOperator(CloneTransactionOperator):
 
-	def __init__(self, source_reference_placement: Placement, target_reference_placement: Placement, source_footprint: pcbnew.FOOTPRINT, target_footprint: pcbnew.FOOTPRINT):
+	def __init__(self, source_reference_placement: Placement, target_reference_placement: Placement, source_footprint: FOOTPRINT, target_footprint: FOOTPRINT):
 		super().__init__(source_reference_placement, target_reference_placement)
-		self.original_placement: Placement = Placement.of(target_footprint)
-		self.target_footprint: pcbnew.FOOTPRINT = target_footprint
-		self.current_placement: Placement = self.original_placement
+		self.original_placement = Placement.of(target_footprint)
+		self.target_footprint = target_footprint
+		self.current_placement = self.original_placement
 		self.source_footprint_placement = Placement.of(source_footprint)
 
 	def apply(self) -> None:
@@ -76,10 +78,10 @@ class CloneTransactionTransferFootprintPlacementOperator(CloneTransactionOperato
 @final
 class CloneTransactionDuplicateAndTransferPlacementPlacementOperator(CloneTransactionOperator):
 
-	def __init__(self, source_reference_placement: Placement, target_reference_placement: Placement, source_item: pcbnew.BOARD_ITEM):
+	def __init__(self, source_reference_placement: Placement, target_reference_placement: Placement, source_item: BOARD_ITEM):
 		super().__init__(source_reference_placement, target_reference_placement)
-		self.source_item: pcbnew.BOARD_ITEM = source_item
-		self.target_item: pcbnew.BOARD_ITEM | None = None
+		self.source_item = source_item
+		self.target_item: BOARD_ITEM | None = None
 
 	def apply(self) -> None:
 		if self.target_item is not None:

@@ -2,15 +2,16 @@ from typing import Sequence, final, Optional
 from logging import Logger
 from dataclasses import dataclass
 
-import pcbnew  # pyright: ignore
+import pcbnew
+from pcbnew import FOOTPRINT, PCB_TRACK, BOARD_ITEM, ZONE
 
-from ..utils.placement import Placement
 from ..utils.string_utils import StringUtils
 
 from ..ui.spinner import spin_while
 from ..ui.bored_user_entertainer import BoredUserEntertainer
 
 from .settings import CloneSettings
+from .placement import Placement
 from .placement_strategy import ClonePlacementStrategy, ClonePlacementStrategyType
 from .transaction_builder import CloneTransactionBuilder
 from .transaction import CloneTransaction
@@ -19,10 +20,10 @@ from .transaction import CloneTransaction
 @final
 @dataclass(eq=False, repr=False, frozen=True)
 class CloneSelection():
-	source_footprints: Sequence[pcbnew.FOOTPRINT]
-	source_tracks: Sequence[pcbnew.PCB_TRACK]
-	source_drawings: Sequence[pcbnew.BOARD_ITEM]
-	source_zones: Sequence[pcbnew.ZONE]
+	source_footprints: Sequence[FOOTPRINT]
+	source_tracks: Sequence[PCB_TRACK]
+	source_drawings: Sequence[BOARD_ITEM]
+	source_zones: Sequence[ZONE]
 
 
 @final
@@ -61,7 +62,8 @@ class CloneService():
 		BoredUserEntertainer.message("Preparing to clone")
 
 		if settings.placement.strategy == ClonePlacementStrategyType.RELATIVE:
-			source_reference_footprint = settings.placement.relative.anchor.data
+			assert settings.placement.relative.anchor is not None
+			source_reference_footprint = settings.placement.relative.anchor.pcbnew_footprint
 		else:
 			source_reference_footprint = selection.source_footprints[0]
 

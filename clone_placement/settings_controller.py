@@ -1,7 +1,8 @@
 from typing import final
 from logging import Logger
 
-import pcbnew  # pyright: ignore
+import pcbnew
+from pcbnew import BOARD
 
 from utils.error_handler import error_handler
 
@@ -12,7 +13,7 @@ from clone_placement.service import CloneService, CloneSelection
 @final
 class CloneSettingsController():
 
-	def __init__(self, logger: Logger, board: pcbnew.BOARD, hierarchy: Hierarchy, selection: CloneSelection):
+	def __init__(self, logger: Logger, board: BOARD, hierarchy: Hierarchy, selection: CloneSelection):
 		self.logger = logger.getChild(type(self).__name__)
 		self.board = board
 		self.hierarchy = hierarchy

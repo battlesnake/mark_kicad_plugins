@@ -4,7 +4,9 @@
 		"**/*.py"
 	],
 	"ignore": [
-		"*_design.py"
+		"**/*_design.py",
+		"typings/**",
+		"**/__init__.py"
 	],
 	"pythonVersion": "3.11",
 	"pythonPlatform": "Linux",

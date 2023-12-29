@@ -2,13 +2,13 @@ from typing import List, TypeVar, Iterable, final
 from functools import reduce
 from math import ceil
 
-import pcbnew  # pyright: ignore
+import pcbnew
 
 from ..utils.kicad_units import UserUnits, SizeUnits
 from ..utils.user_exception import UserException
 from ..utils.string_utils import StringUtils
 
-from ..parse_v8 import SheetInstance, Footprint, EntityPath, SchematicParser
+from ..parse_v8 import SheetInstance, Footprint, EntityPath, SchematicLoader, Schematic
 
 from ..plugin import Plugin
 
@@ -25,6 +25,8 @@ ItemType = TypeVar("ItemType", bound=pcbnew.BOARD_ITEM)
 @final
 class ClonePlugin(Plugin):
 
+	schematic: Schematic
+
 	@staticmethod
 	def filter_selected(items: Iterable[ItemType]) -> List[ItemType]:
 		return [
@@ -36,10 +38,10 @@ class ClonePlugin(Plugin):
 	def get_common_ancestor_of_footprints(self, footprints: Iterable[Footprint]) -> SheetInstance:
 		hierarchy = self.hierarchy
 		footprint_sheet_uuid_paths = set(
-			footprint.sheet_instance.uuid_path
+			footprint.symbol_instance.sheet.path
 			for footprint in footprints
 		)
-		common_ancestor_uuid_path = EntityPath.parse(StringUtils.get_common_ancestor_of(footprint_sheet_uuid_paths))
+		common_ancestor_uuid_path = EntityPath(parts=StringUtils.get_common_ancestor_of(footprint_sheet_uuid_paths))
 		return hierarchy.instances[common_ancestor_uuid_path]
 
 	def get_selected_footprints(self) -> List[Footprint]:
@@ -55,12 +57,10 @@ class ClonePlugin(Plugin):
 		board = self.board
 
 		try:
-			hierarchy = HierarchyParser(logger, board).parse()
+			schematic = SchematicLoader.load(board)
 		except Exception as error:
 			raise UserException("Failed to parse board / schematic structure") from error
-		self.hierarchy = hierarchy
-
-		HierarchyLogger(logger).log_all(hierarchy)
+		self.schematic = schematic
 
 		selection = CloneSelection(
 			source_footprints=self.filter_selected(board.Footprints()),

@@ -3,8 +3,8 @@ from typing_extensions import overload
 
 import pcbnew  # pyright: ignore
 
-from clone_placement.placement import Placement
-from clone_placement.transaction import CloneTransaction, CloneTransactionDuplicateAndTransferPlacementPlacementOperator, CloneTransactionTransferFootprintPlacementOperator
+from .placement import Placement
+from .transaction import CloneTransaction, CloneTransactionDuplicateAndTransferPlacementPlacementOperator, CloneTransactionTransferFootprintPlacementOperator
 
 
 ItemType = TypeVar("ItemType", bound=pcbnew.BOARD_ITEM)
@@ -21,7 +21,8 @@ class CloneTransactionBuilder():
 		source_reference: Placement,
 		target_reference: Placement,
 		source_item: pcbnew.BOARD_ITEM,
-	) -> None: ...
+	) -> None:
+		...
 
 	@overload
 	def add_item(
@@ -30,7 +31,8 @@ class CloneTransactionBuilder():
 		target_reference: Placement,
 		source_item: pcbnew.FOOTPRINT,
 		target_item: pcbnew.FOOTPRINT,
-	) -> None: ...
+	) -> None:
+		...
 
 	def add_item(
 		self,
