@@ -3,14 +3,14 @@ from typing import Any, List, Sequence, Union, overload
 from uuid import UUID
 
 try:
-    from pcbnew import KIID, KIID_PATH
+    from pcbnew import KIID, KIID_PATH  # pyright: ignore
 except ModuleNotFoundError:
 
-    class KIID():
+    class KIID():  # pyright: ignore
         def AsString(self):
             return ""
 
-    class KIID_PATH():
+    class KIID_PATH():  # pyright: ignore
         def AsString(self):
             return ""
 
