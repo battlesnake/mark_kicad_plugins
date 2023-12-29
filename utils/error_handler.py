@@ -41,7 +41,7 @@ def error_handler(func: Callable[..., ReturnType]) -> Callable[..., ReturnType]:
 			# Handle differently depending on whether we're running in Kicad
 			print(diagnostic)
 			try:
-				import pcbnew
+				import pcbnew  # pyright: ignore
 				MessageBox.alert(f"Operation failed: {error.message}\n\nFor more information, check the log-files in your project directory or temp directory for more information")
 			except ModuleNotFoundError:
 				app = wx.App(False)
