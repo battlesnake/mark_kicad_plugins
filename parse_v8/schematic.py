@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path
 import re
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Sequence, TypeVar
 
 from ..utils.common_value import common_value
 from ..utils.multi_map import MultiMap
@@ -26,6 +26,8 @@ COMPONENT_REFERENCE_VALIDATOR = re.compile(r"^(#?[A-Z]+)([0-9]+)$")
 
 @dataclass(frozen=True, eq=True)
 class ComponentReference():
+	""" Reference for one physical component (i.e. all units) """
+
 	designator: str
 
 	def __post_init__(self):
@@ -50,6 +52,8 @@ class ComponentReference():
 
 @dataclass(frozen=True, eq=True)
 class SymbolReference(ComponentReference):
+	""" Reference for a logical symbol (i.e. one unit of a physical component) """
+
 	unit: int
 	multi_unit: bool
 
@@ -67,30 +71,33 @@ class SymbolReference(ComponentReference):
 
 @dataclass
 class SheetDefinition():
+	""" Maps to one sheet file i.e. a kicad_sch """
 	id: EntityPathComponent = field(compare=True, hash=True)
 	version: str
 	filename: str
-	symbols: List["SymbolDefinition"]
+	symbols: List["SymbolDefinition"] = field(repr=False)
 
 
 @dataclass
 class SheetInstance():
+	""" Maps to an instance of a sheet within the sheet-hierarchy """
 	definition: SheetDefinition
 	path: EntityPath = field(compare=True, hash=True)
 	name: str
 	page: str
-	parent: Optional["SheetInstance"]
-	children: List["SheetInstance"]
-	symbols: List["SymbolInstance"]
+	parent: Optional["SheetInstance"] = field(repr=False)
+	children: List["SheetInstance"] = field(repr=False)
+	symbols: List["SymbolInstance"] = field(repr=False)
 
 
 @dataclass
 class SymbolDefinition():
+	""" Maps to a symbol node in a sheet file """
 	sheet: SheetDefinition
 	id: EntityPathComponent
 	reference: SymbolReference  # Reference in own sheet file, not in schematic/layout
-	instances: List["SymbolInstance"]
-	component: "ComponentDefinition" = field(init=False)
+	instances: List["SymbolInstance"] = field(repr=False)
+	component: "ComponentDefinition" = field(init=False, repr=False)
 
 	def __hash__(self):
 		return hash(self.id)
@@ -98,11 +105,12 @@ class SymbolDefinition():
 
 @dataclass
 class SymbolInstance():
+	""" Maps to a symbol in an instance of a sheet in the sheet-hierarchy """
 	sheet: SheetInstance
 	definition: SymbolDefinition
 	path: EntityPath
 	reference: SymbolReference
-	component: "ComponentInstance" = field(init=False)
+	component: "ComponentInstance" = field(init=False, repr=False)
 
 	def __hash__(self):
 		return hash(self.path)
@@ -111,13 +119,13 @@ class SymbolInstance():
 @dataclass
 class ComponentDefinition():
 	value: str
-	units: List[SymbolDefinition]
+	units: List[SymbolDefinition] = field(repr=False)
 	properties: Dict[str, str]
 	library_id: str
 	in_bom: bool
 	on_board: bool
 	dnp: bool
-	instances: List["ComponentInstance"]
+	instances: List["ComponentInstance"] = field(repr=False)
 
 	def __hash__(self):
 		return id(self)
@@ -125,9 +133,11 @@ class ComponentDefinition():
 
 @dataclass
 class ComponentInstance():
+	""" Maps to a physical component i.e. a footprint on the PCB """
+	""" (or in some cases, virtual components e.g. for power symbols) """
 	definition: ComponentDefinition
 	reference: ComponentReference
-	units: List[SymbolInstance]
+	units: List[SymbolInstance] = field(repr=False)
 
 	def __hash__(self):
 		return hash(self.reference)
@@ -186,12 +196,12 @@ class ComponentInstanceMetadata():
 
 @dataclass
 class Schematic():
-	sheet_definitions: List[SheetDefinition]
-	sheet_instances: List[SheetInstance]
-	symbol_definitions: List[SymbolDefinition]
-	symbol_instances: List[SymbolInstance]
+	sheet_definitions: Dict[str, SheetDefinition]
+	sheet_instances: Dict[EntityPath, SheetInstance]
+	symbol_definitions: Dict[EntityPathComponent, SymbolDefinition]
+	symbol_instances: Dict[EntityPath, SymbolInstance]
 	component_definitions: List[ComponentDefinition]
-	component_instances: List[ComponentInstance]
+	component_instances: Dict[str, ComponentInstance]
 
 
 # Schematic loader
@@ -246,19 +256,31 @@ class SchematicLoader():
 		self.read_component_instances()
 
 	def get_result(self):
+
+		Key = TypeVar("Key")
+		Value = TypeVar("Value")
+
+		def to_dict(items: Sequence[Value], key_func: Callable[[Value], Key]) -> Dict[Key, Value]:
+			result: Dict[Key, Value] = {}
+			for item in items:
+				key = key_func(item)
+				if key in result:
+					raise KeyError("Duplicate key", key, type(key), type(item), repr(result[key]), repr(item))
+				result[key] = item
+			return result
+
 		return Schematic(
-			sheet_definitions=self.sheet_definitions,
-			sheet_instances=self.sheet_instances,
-			symbol_definitions=self.symbol_definitions,
-			symbol_instances=self.symbol_instances,
+			sheet_definitions=to_dict(self.sheet_definitions, lambda item: item.filename),
+			sheet_instances=to_dict(self.sheet_instances, lambda item: item.path),
+			symbol_definitions=to_dict(self.symbol_definitions, lambda item: item.id),
+			symbol_instances=to_dict(self.symbol_instances, lambda item: item.path),
 			component_definitions=self.component_definitions,
-			component_instances=self.component_instances,
+			component_instances=to_dict(self.component_instances, lambda item: item.reference.designator),
 		)
 
 	def read_sheet_definitions(self):
 		logger.info("Reading sheet definition")
 
-		@functools.cache
 		def read_sheet_definition(filename: str):
 			if already_loaded := next(
 				(
@@ -295,7 +317,6 @@ class SchematicLoader():
 				for inner_path_node in inner_sheet_node.instances.project.filter(0, self.project).path
 			]
 			self.sheet_definitions.append(sheet_definition)
-			assert filename not in self.sheet_metadata
 			self.sheet_metadata[filename] = SheetMetadata(
 				node=~node,
 				filename=filename,
@@ -311,11 +332,12 @@ class SchematicLoader():
 		logger.info("Reading sheet instances")
 		root_path = EntityPath([self.root_sheet_definition.id])
 		logger.info("Reading sheet instance: %s / %s", self.project, root_path)
+		root_sheet_definition_node = Selection([self.sheet_metadata[self.root_sheet_definition.filename].node])
 		self.root_sheet_instance = SheetInstance(
 			definition=self.root_sheet_definition,
 			path=root_path,
 			name=self.project,
-			page=Selection([self.sheet_metadata[self.root_sheet_definition.filename].node]).sheet_instances.path.page[0],
+			page=root_sheet_definition_node.sheet_instances.path.page[0],
 			parent=None,
 			children=[],
 			symbols=[],
@@ -324,6 +346,8 @@ class SchematicLoader():
 
 		def instantiante_inner_sheets(parent: SheetInstance):
 			for metadata in self.sheet_metadata[parent.definition.filename].instances:
+				if not metadata.path.startswith(parent.path):
+					continue
 				logger.info("Reading sheet instance: %s / %s", metadata.name, metadata.path)
 				definition = next(
 					item

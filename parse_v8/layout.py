@@ -2,14 +2,13 @@ from dataclasses import dataclass
 from typing import List
 from pcbnew import BOARD, FOOTPRINT
 
-from .schematic import Schematic, SymbolInstance
-from .entity_path import EntityPath
+from .schematic import Schematic, ComponentInstance
 
 
 @dataclass
 class Footprint():
     pcbnew_footprint: FOOTPRINT
-    symbol_instance: SymbolInstance
+    component_instance: ComponentInstance
 
 
 @dataclass
@@ -41,15 +40,15 @@ class LayoutLoader():
         )
 
     def read_footprints(self):
-        symbol_instances = {
-            symbol_instance.path: symbol_instance
-            for symbol_instance in self.schematic.symbol_instances
+        component_instances = {
+            component_instance.reference.designator: component_instance
+            for component_instance in self.schematic.component_instances
         }
         for pcbnew_footprint in self.board.Footprints():
-            path = EntityPath(pcbnew_footprint.GetPath())
-            symbol_instance = symbol_instances[path]
+            reference = pcbnew_footprint.GetReference()
+            component_instance = component_instances[reference]
             footprint = Footprint(
                 pcbnew_footprint=pcbnew_footprint,
-                symbol_instance=symbol_instance,
+                component_instance=component_instance,
             )
             self.footprints += [footprint]

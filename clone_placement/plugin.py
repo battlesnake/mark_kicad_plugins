@@ -8,7 +8,7 @@ from ..utils.kicad_units import UserUnits, SizeUnits
 from ..utils.user_exception import UserException
 from ..utils.string_utils import StringUtils
 
-from ..parse_v8 import SheetInstance, Footprint, EntityPath, SchematicLoader, Schematic
+from ..parse_v8 import SheetInstance, Footprint, EntityPath, SchematicLoader, Schematic, Layout
 
 from ..plugin import Plugin
 
@@ -26,6 +26,7 @@ ItemType = TypeVar("ItemType", bound=pcbnew.BOARD_ITEM)
 class ClonePlugin(Plugin):
 
 	schematic: Schematic
+	layout: Layout
 
 	@staticmethod
 	def filter_selected(items: Iterable[ItemType]) -> List[ItemType]:
@@ -36,10 +37,10 @@ class ClonePlugin(Plugin):
 		]
 
 	def get_common_ancestor_of_footprints(self, footprints: Iterable[Footprint]) -> SheetInstance:
-		hierarchy = self.hierarchy
 		footprint_sheet_uuid_paths = set(
-			footprint.symbol_instance.sheet.path
+			symbol_instance.sheet.path
 			for footprint in footprints
+			for symbol_instance in footprint.component_instance.units
 		)
 		common_ancestor_uuid_path = EntityPath(parts=StringUtils.get_common_ancestor_of(footprint_sheet_uuid_paths))
 		return hierarchy.instances[common_ancestor_uuid_path]
