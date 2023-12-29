@@ -8,6 +8,7 @@ import os
 import os.path
 
 import pcbnew  # pyright: ignore
+from pcbnew import BOARD, ActionPlugin
 
 from .plugin import Plugin
 from .metadata import PluginMetadata
@@ -19,14 +20,14 @@ from ..ui.spinner import spin_while
 from ..ui.bored_user_entertainer import BoredUserEntertainer
 
 
-class PluginWrapper(pcbnew.ActionPlugin, ABC):
+class PluginWrapper(ActionPlugin, ABC):
 
-	def __init__(self, test_board: Optional[pcbnew.BOARD] = None):
+	def __init__(self, test_board: Optional[BOARD] = None):
 		super().__init__()
 		self.test_board = test_board
 
 	@abstractmethod
-	def create_plugin(self, logger: Logger, board: pcbnew.BOARD) -> Plugin:
+	def create_plugin(self, logger: Logger, board: BOARD) -> Plugin:
 		pass
 
 	@staticmethod
@@ -79,7 +80,7 @@ class PluginWrapper(pcbnew.ActionPlugin, ABC):
 
 	@error_handler
 	@spin_while
-	def execute(self, logger: Logger, board: pcbnew.BOARD, filename: str) -> None:
+	def execute(self, logger: Logger, board: BOARD, filename: str) -> None:
 		BoredUserEntertainer.message("Inspecting environment...")
 		logger.info("Platform: %s", sys.platform)
 		logger.info("Python version: %s", sys.version)

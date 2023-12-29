@@ -1,3 +1,4 @@
+from typing import Any, Optional
 from .eda_angle import EDA_ANGLE, EDA_ANGLE_T, TENTHS_OF_A_DEGREE_T, DEGREE_T
 from .vector2i import VECTOR2I
 from .box2i import BOX2I
@@ -21,5 +22,17 @@ from .eda_text import EDA_TEXT
 from .fp_text import FP_TEXT
 from .pcb_text import PCB_TEXT
 
+from .kicad_plugin import KicadPlugin
+from .action_plugin import ActionPlugin
+
+
 def Refresh():
+	...
+
+
+def GetBoard() -> Optional[BOARD]:
+	...
+
+
+def GetBuildVersion() -> Any:
 	...

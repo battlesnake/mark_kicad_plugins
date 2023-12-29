@@ -1,0 +1,13 @@
+class KicadPlugin():
+
+	def __init__(self):
+		...
+
+	def register(self) -> None:
+		...
+
+	def deregister(self) -> None:
+		...
+
+	def GetPluginPath(self) -> str:
+		...
