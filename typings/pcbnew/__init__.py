@@ -1,4 +1,5 @@
-from typing import Any, Optional
+from typing import Any, Literal, Optional, Union
+
 from .eda_angle import EDA_ANGLE, EDA_ANGLE_T, TENTHS_OF_A_DEGREE_T, DEGREE_T
 from .vector2i import VECTOR2I
 from .box2i import BOX2I
@@ -24,6 +25,8 @@ from .pcb_text import PCB_TEXT
 
 from .kicad_plugin import KicadPlugin
 from .action_plugin import ActionPlugin
+
+from .user_units import GetUserUnits, USER_UNITS_INCH, USER_UNITS_MILLIMETRE, USER_UNITS_MIL
 
 
 def Refresh():

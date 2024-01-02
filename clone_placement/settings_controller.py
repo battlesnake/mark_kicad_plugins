@@ -1,22 +1,23 @@
 from typing import final
 from logging import Logger
 
-import pcbnew
-from pcbnew import BOARD
+from pcbnew import BOARD, Refresh as RefreshView
 
-from utils.error_handler import error_handler
+from ..parse_v8 import Schematic
 
-from clone_placement.settings import CloneSettings
-from clone_placement.service import CloneService, CloneSelection
+from ..utils.error_handler import error_handler
+
+from .settings import CloneSettings
+from .service import CloneService, CloneSelection
 
 
 @final
 class CloneSettingsController():
 
-	def __init__(self, logger: Logger, board: BOARD, hierarchy: Hierarchy, selection: CloneSelection):
+	def __init__(self, logger: Logger, board: BOARD, schematic: Schematic, selection: CloneSelection):
 		self.logger = logger.getChild(type(self).__name__)
 		self.board = board
-		self.hierarchy = hierarchy
+		self.schematic = schematic
 		self.selection = selection
 		self.is_preview = False
 		self.service = CloneService.get()
@@ -26,7 +27,10 @@ class CloneSettingsController():
 		self.is_preview = False
 
 	def clone(self, settings: CloneSettings) -> None:
-		self.service.clone_subcircuits(self.logger, self.hierarchy, self.selection, settings)
+		self.service.clone_subcircuits(self.logger, self.schematic, self.selection, settings)
+
+	def refresh_view(self):
+		RefreshView()
 
 	@error_handler
 	def has_preview(self) -> bool:
@@ -38,14 +42,14 @@ class CloneSettingsController():
 		self.revert()
 		self.clone(settings)
 		self.is_preview = True
-		pcbnew.Refresh()
+		self.refresh_view()
 
 	@error_handler
 	def clear_preview(self) -> None:
 		self.logger.info("Command: Clear preview")
 		if self.is_preview:
 			self.revert()
-		pcbnew.Refresh()
+		self.refresh_view()
 
 	@error_handler
 	def can_undo(self) -> bool:
@@ -56,11 +60,11 @@ class CloneSettingsController():
 		self.logger.info("Command: Apply")
 		self.revert()
 		self.clone(settings)
-		pcbnew.Refresh()
+		self.refresh_view()
 
 	@error_handler
 	def undo(self) -> None:
 		self.logger.info("Command: Undo")
 		self.revert()
 		self.is_preview = False
-		pcbnew.Refresh()
+		self.refresh_view()

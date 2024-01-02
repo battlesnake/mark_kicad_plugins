@@ -1,5 +1,6 @@
 from typing import Any
 
+from .box2i import BOX2I
 from .board_item_container import BOARD_ITEM_CONTAINER
 
 
@@ -24,7 +25,7 @@ class FOOTPRINT(BOARD_ITEM_CONTAINER):
 	def GetBoundingHull(self) -> Any:
 		...
 
-	def GetBoundingBox(self, *args) -> Any:
+	def GetBoundingBox(self, *args) -> BOX2I:
 		...
 
 	def Pads(self, *args) -> Any:

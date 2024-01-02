@@ -44,6 +44,12 @@ class EntityPathComponent():
     def __repr__(self):
         return str(self)
 
+    def __lt__(self, other: "EntityPathComponent"):
+        return self.value < other.value
+
+    def __gt__(self, other: "EntityPathComponent"):
+        return self.value > other.value
+
 
 @dataclass(frozen=True)
 class EntityPath(Sequence[EntityPathComponent]):
@@ -95,6 +101,12 @@ class EntityPath(Sequence[EntityPathComponent]):
             tuple(self.parts) == tuple(other.parts)
         )
 
+    def __lt__(self, other: "EntityPath"):
+        return list(self.parts) < list(other.parts)
+
+    def __gt__(self, other: "EntityPath"):
+        return list(self.parts) > list(other.parts)
+
     @overload
     def __getitem__(self, index_or_slice: int) -> EntityPathComponent:
         ...
@@ -139,7 +151,7 @@ class EntityPath(Sequence[EntityPathComponent]):
         else:
             return EntityPath(parts=list(self) + list(suffix))
 
-    def __bitand__(self, other: "EntityPath") -> "EntityPath":
+    def __and__(self, other: "EntityPath") -> "EntityPath":
         """ Common prefix """
         prefix: List[EntityPathComponent] = []
         for a, b in zip(self, other):

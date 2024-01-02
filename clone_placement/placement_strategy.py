@@ -1,7 +1,8 @@
-from typing import final, Sequence, Iterator, Tuple, Callable, Dict, List
+from functools import reduce
+from typing import final, Sequence, Iterator, Tuple, Callable, Dict, List, cast
 from abc import ABC, abstractmethod
 
-from ..parse_v8 import Footprint
+from ..parse_v8 import Footprint, SheetInstance
 
 from .placement import Placement
 
@@ -49,22 +50,33 @@ class ClonePlacementGridStrategy(ClonePlacementStrategy):
 		""" Key-function for sorting footprints (number, then type) """
 		number = int("".join(
 			ch
-			for ch in footprint.symbol_instance.reference.designator
+			for ch in footprint.component_instance.reference.designator
 			if ch.isdigit()
 		) or "0")
 		return [
 			number,
-			footprint.symbol_instance.reference.designator
+			footprint.component_instance.reference.designator
 		]
 
 	@staticmethod
 	def compare_footprint_by_hierarchy(footprint: Footprint) -> List[str | int]:
 		""" Key-function for sorting footprints """
 		result: List[str] = []
-		sheet = footprint.symbol_instance.sheet
-		while sheet is not None:
-			result.append(sheet.name)
-			sheet = sheet.parent
+		sheets = [
+			unit.sheet
+			for unit in footprint.component_instance.units
+		]
+		sheet_paths = [
+			sheet.path
+			for sheet in sheets
+		]
+		common_sheet: SheetInstance | None = cast(
+			SheetInstance,
+			reduce(lambda a, b: a & b, sheet_paths)  # pyright: ignore
+		)
+		while common_sheet is not None:
+			result.append(common_sheet.name)
+			common_sheet = common_sheet.parent
 		return list(reversed(result))
 
 	def __init__(self, settings: ClonePlacementGridStrategySettings, reference: Footprint, targets: Sequence[Footprint]):

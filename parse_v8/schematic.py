@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field
-import functools
 import logging
 import os
 from pathlib import Path
 import re
-from typing import Callable, Dict, List, Optional, Sequence, TypeVar
+from typing import Callable, Dict, List, Optional, Sequence, Tuple, Type, TypeVar, Union
+
+from .pcbnew_imports import FOOTPRINT, BOARD
 
 from ..utils.common_value import common_value
 from ..utils.multi_map import MultiMap
@@ -49,6 +50,16 @@ class ComponentReference():
 		assert match is not None
 		return int(match.group(2))
 
+	@property
+	def _sort_key(self) -> Tuple[str, int, int]:
+		return (self.type, self.number, 0)
+
+	def __gt__(self, other: "ComponentReference") -> bool:
+		return self._sort_key > other._sort_key
+
+	def __lt__(self, other: "ComponentReference") -> bool:
+		return not (self > other)
+
 
 @dataclass(frozen=True, eq=True)
 class SymbolReference(ComponentReference):
@@ -67,6 +78,10 @@ class SymbolReference(ComponentReference):
 			parts += [chr(ord("A") + unit % 26)]
 			unit //= 26
 		return self.designator + "".join(reversed(parts))
+
+	@property
+	def _sort_key(self):
+		return (self.type, self.number, self.unit)
 
 
 @dataclass
@@ -138,6 +153,7 @@ class ComponentInstance():
 	definition: ComponentDefinition
 	reference: ComponentReference
 	units: List[SymbolInstance] = field(repr=False)
+	footprint: Optional["Footprint"] = field(init=False, default=None)
 
 	def __hash__(self):
 		return hash(self.reference)
@@ -191,7 +207,18 @@ class ComponentInstanceMetadata():
 	symbol_instance: SymbolInstance
 
 
+@dataclass
+class Footprint():
+	path: EntityPath
+	pcbnew_footprint: FOOTPRINT
+	component_instance: ComponentInstance
+
+
 # Schematic scope
+
+
+SchematicEntity = Union[SheetInstance, SymbolInstance, ComponentInstance]
+SchematicEntityType = Type[SchematicEntity]
 
 
 @dataclass
@@ -202,6 +229,7 @@ class Schematic():
 	symbol_instances: Dict[EntityPath, SymbolInstance]
 	component_definitions: List[ComponentDefinition]
 	component_instances: Dict[str, ComponentInstance]
+	footprints: Dict[EntityPath, Footprint]
 
 
 # Schematic loader
@@ -225,14 +253,19 @@ class SchematicLoader():
 	symbol_instances: List[SymbolInstance]
 	component_definitions: List[ComponentDefinition]
 	component_instances: List[ComponentInstance]
+	footprints: List[Footprint]
 
 	root_sheet_definition: SheetDefinition
 	root_sheet_instance: SheetInstance
 
 	@staticmethod
-	def load(filename: str):
-		loader = Parser().parse_file
-		return SchematicLoader(filename, loader).get_result()
+	def load(filename: str, board: Optional[BOARD] = None):
+		sheet_loader = Parser().parse_file
+		schematic_loader = SchematicLoader(filename, sheet_loader)
+		schematic_loader.read_schematic()
+		if board is not None:
+			schematic_loader.read_footprints(board)
+		return schematic_loader.get_result()
 
 	def __init__(self, filename: str, schematic_loader: Callable[[str], Selection]):
 		self.filename = os.path.join(os.path.curdir, filename)
@@ -248,6 +281,9 @@ class SchematicLoader():
 		self.symbol_instances = []
 		self.component_definitions = []
 		self.component_instances = []
+		self.footprints = []
+
+	def read_schematic(self):
 		self.read_sheet_definitions()
 		self.read_sheet_instances()
 		self.read_symbol_definitions()
@@ -276,6 +312,7 @@ class SchematicLoader():
 			symbol_instances=to_dict(self.symbol_instances, lambda item: item.path),
 			component_definitions=self.component_definitions,
 			component_instances=to_dict(self.component_instances, lambda item: item.reference.designator),
+			footprints=to_dict(self.footprints, lambda footprint: footprint.path),
 		)
 
 	def read_sheet_definitions(self):
@@ -496,3 +533,18 @@ class SchematicLoader():
 			component_definition.instances.append(component_instance)
 			for unit in units:
 				unit.component = component_instance
+
+	def read_footprints(self, board: BOARD):
+		component_instances = {
+			component_instance.reference.designator: component_instance
+			for component_instance in self.component_instances
+		}
+		for pcbnew_footprint in board.Footprints():
+			reference = pcbnew_footprint.GetReference()
+			component_instance = component_instances[reference]
+			footprint = Footprint(
+				path=EntityPath.parse(pcbnew_footprint.GetPath()),
+				pcbnew_footprint=pcbnew_footprint,
+				component_instance=component_instance,
+			)
+			self.footprints.append(footprint)

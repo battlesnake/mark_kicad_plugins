@@ -1,11 +1,12 @@
 from typing import Sequence, final, Optional
+
 from logging import Logger
 from dataclasses import dataclass
 
-import pcbnew
-from pcbnew import FOOTPRINT, PCB_TRACK, BOARD_ITEM, ZONE
+from pcbnew import FOOTPRINT, PCB_TRACK, BOARD_ITEM, ZONE, Refresh as RefreshView
 
 from ..utils.string_utils import StringUtils
+from ..parse_v8 import Schematic, Footprint, Layout, EntityPath
 
 from ..ui.spinner import spin_while
 from ..ui.bored_user_entertainer import BoredUserEntertainer
@@ -52,10 +53,16 @@ class CloneService():
 		self.transaction.revert()
 		self.transaction = None
 
-		pcbnew.Refresh()
+		RefreshView()
 
 	@spin_while
-	def clone_subcircuits(self, logger: Logger, hierarchy: Hierarchy, selection: CloneSelection, settings: CloneSettings) -> None:
+	def clone_subcircuits(
+		self,
+		logger: Logger,
+		schematic: Schematic,
+		selection: CloneSelection,
+		settings: CloneSettings
+	) -> None:
 
 		logger = logger.getChild(type(self).__name__)
 
@@ -67,34 +74,42 @@ class CloneService():
 		else:
 			source_reference_footprint = selection.source_footprints[0]
 
-		source_reference = hierarchy.get_footprint_by_pcb_path(source_reference_footprint.GetPath())
-		logger.info("Source reference footprint: %s (%s)", source_reference.reference, source_reference.sheet_instance.name_path)
+		source_reference = layout.footprints[EntityPath.parse(source_reference_footprint.GetPath())]
+		logger.info(
+			"Source reference footprint: %s",
+			source_reference.component_instance.reference,
+		)
 
 		selected_instances = settings.instances
 		for instance in selected_instances:
-			logger.info("Selected target sheet: %s", instance.name_path)
+			logger.info("Selected target sheet: %s", instance.path)
 		selected_instance_paths = {
-			instance.uuid_path
+			instance.path
 			for instance in selected_instances
 		}
 
+		other_instances = [
+			instance
+			for instance in source_reference.component_instance.units[0].definition.instances
+		]
+
 		logger.info("Unfiltered list of related footprints: %s", ", ".join(
-			footprint.reference
-			for footprint in hierarchy.symbol_instances[source_reference.symbol]
+			str(instance.component.reference)
+			for instance in other_instances
 		))
 
 		target_references = [
-			footprint
-			for footprint in hierarchy.symbol_instances[source_reference.symbol]
+			instance.component.
+			for instance in other_instances
 			if any(
-				StringUtils.is_child_of(instance, footprint.path)
+				footprint.path.startswith(instance)
 				for instance in selected_instance_paths
 			)
 		]
 		for target in target_references:
 			logger.info("Target reference footprints: %s", target.reference)
 
-		source_reference_placement = Placement.of(source_reference.data)
+		source_reference_placement = Placement.of(source_reference.pcbnew_footprint)
 
 		placement_strategy = ClonePlacementStrategy.get(
 			settings=settings.placement,
@@ -152,4 +167,4 @@ class CloneService():
 
 		BoredUserEntertainer.message("Refreshing pcbnew...")
 		logger.info("Refreshing pcbnew")
-		pcbnew.Refresh()
+		RefreshView()
