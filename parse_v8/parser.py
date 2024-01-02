@@ -1,5 +1,17 @@
 """ Parse Kicad-style s-expression files """
 
+"""
+This is the bottleneck of the cloner plugin, on one project it takes 5 seconds
+to read in all of the schematics, then <0.1 seconds to do all the actual
+processing of the schematic node tree.
+
+Perhaps replace with a parser that uses regexes to do the skip+search, instead
+of skipping 1 char at a time in python-land.
+
+Remember, function calls in python are also insanely expensive in both time and
+space.
+"""
+
 from typing import List, Sequence, Optional
 import logging
 
@@ -116,7 +128,6 @@ class Parser():
 		it.next()
 		return Node(key=key, values=tuple(values), children=tuple(children))
 
-
 	def parse(self, text: str, root_values: Optional[Sequence[str]] = None) -> Selection:
 		try:
 			it = StringIterator(text, 0, len(text))
@@ -131,7 +142,6 @@ class Parser():
 			return Selection(nodes=[root])
 		except StopIteration as exc:
 			raise ValueError("Unexpected end of expression") from exc
-
 
 	def parse_file(self, path: str) -> Selection:
 		with open(path, "r", encoding="utf-8") as fp:

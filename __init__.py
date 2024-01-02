@@ -1,7 +1,6 @@
 import logging
 import os.path
 import tempfile
-import sys
 
 from .utils.error_handler import error_handler
 from .utils.logging_config import LoggingConfig
@@ -31,11 +30,11 @@ def load_plugins():
 init_root_logger()
 try:
 	# Test if running in Kicad
-	import pcbnew
+	import pcbnew  # pyright: ignore
 	load_plugins()
 except ModuleNotFoundError:
 	# Not running in pcbnew, skip
 	pass
-except:
+except:  # pyright: ignore
 	# Running in pcbnew, re-raise
 	raise
