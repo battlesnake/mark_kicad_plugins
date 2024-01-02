@@ -1,3 +1,8 @@
+"""
+This has grown from a basic schematic relations parser to include board stuff
+too, perhaps rename from Schematic to Project?
+"""
+
 from dataclasses import dataclass, field
 import logging
 import os
@@ -132,6 +137,13 @@ class SymbolInstance():
 
 
 @dataclass
+class Footprint():
+	path: EntityPath
+	pcbnew_footprint: FOOTPRINT
+	component_instance: "ComponentInstance"
+
+
+@dataclass
 class ComponentDefinition():
 	value: str
 	units: List[SymbolDefinition] = field(repr=False)
@@ -153,7 +165,7 @@ class ComponentInstance():
 	definition: ComponentDefinition
 	reference: ComponentReference
 	units: List[SymbolInstance] = field(repr=False)
-	footprint: Optional["Footprint"] = field(init=False, default=None)
+	footprint: Footprint = field(init=False)
 
 	def __hash__(self):
 		return hash(self.reference)
@@ -205,13 +217,6 @@ class ComponentDefinitionMetadata():
 class ComponentInstanceMetadata():
 	""" Intermediate data to help with loading stuff """
 	symbol_instance: SymbolInstance
-
-
-@dataclass
-class Footprint():
-	path: EntityPath
-	pcbnew_footprint: FOOTPRINT
-	component_instance: ComponentInstance
 
 
 # Schematic scope

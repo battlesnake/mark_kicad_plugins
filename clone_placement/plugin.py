@@ -8,7 +8,7 @@ from pcbnew import GetUserUnits, BOARD_ITEM
 from ..utils.kicad_units import UserUnits, SizeUnits
 from ..utils.user_exception import UserException
 
-from ..parse_v8 import SheetInstance, Footprint, EntityPath, SchematicLoader, Schematic, Layout, LayoutLoader
+from ..parse_v8 import SheetInstance, Footprint, EntityPath, SchematicLoader, Schematic
 
 from ..plugin import Plugin
 
@@ -32,7 +32,6 @@ ItemType = TypeVar("ItemType", bound=BOARD_ITEM)
 class ClonePlugin(Plugin):
 
 	schematic: Schematic
-	layout: Layout
 
 	@staticmethod
 	def filter_selected(items: Iterable[ItemType]) -> List[ItemType]:
@@ -56,7 +55,7 @@ class ClonePlugin(Plugin):
 
 	def get_selected_footprints(self) -> List[Footprint]:
 		return [
-			self.layout.footprints[EntityPath.parse(footprint.GetPath())]
+			self.schematic.footprints[EntityPath.parse(footprint.GetPath())]
 			for footprint in self.filter_selected(self.board.Footprints())
 		]
 
@@ -69,8 +68,7 @@ class ClonePlugin(Plugin):
 			logger.info("Board path: %s", board_file)
 			schematic_file = str(Path(board_file).with_suffix(".kicad_sch"))
 			logger.info("Assumed schematic path: %s", schematic_file)
-			schematic = SchematicLoader.load(schematic_file)
-			layout = LayoutLoader.load(board, schematic)
+			schematic = SchematicLoader.load(schematic_file, board)
 		except Exception as error:
 			raise UserException("Failed to parse board / schematic structure") from error
 		self.schematic = schematic
@@ -83,7 +81,7 @@ class ClonePlugin(Plugin):
 		)
 
 		selected_footprints = [
-			layout.footprints[EntityPath.parse(footprint.GetPath())]
+			schematic.footprints[EntityPath.parse(footprint.GetPath())]
 			for footprint in selection.source_footprints
 		]
 		if not selected_footprints:

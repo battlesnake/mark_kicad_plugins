@@ -5,8 +5,7 @@ from dataclasses import dataclass
 
 from pcbnew import FOOTPRINT, PCB_TRACK, BOARD_ITEM, ZONE, Refresh as RefreshView
 
-from ..utils.string_utils import StringUtils
-from ..parse_v8 import Schematic, Footprint, Layout, EntityPath
+from ..parse_v8 import Schematic, EntityPath
 
 from ..ui.spinner import spin_while
 from ..ui.bored_user_entertainer import BoredUserEntertainer
@@ -74,7 +73,7 @@ class CloneService():
 		else:
 			source_reference_footprint = selection.source_footprints[0]
 
-		source_reference = layout.footprints[EntityPath.parse(source_reference_footprint.GetPath())]
+		source_reference = schematic.footprints[EntityPath.parse(source_reference_footprint.GetPath())]
 		logger.info(
 			"Source reference footprint: %s",
 			source_reference.component_instance.reference,
@@ -99,15 +98,15 @@ class CloneService():
 		))
 
 		target_references = [
-			instance.component.
-			for instance in other_instances
+			other_instance.component.footprint
+			for other_instance in other_instances
 			if any(
-				footprint.path.startswith(instance)
+				other_instance.path.startswith(instance)
 				for instance in selected_instance_paths
 			)
 		]
 		for target in target_references:
-			logger.info("Target reference footprints: %s", target.reference)
+			logger.info("Target reference footprints: %s", target.component_instance.reference)
 
 		source_reference_placement = Placement.of(source_reference.pcbnew_footprint)
 
@@ -125,20 +124,21 @@ class CloneService():
 		BoredUserEntertainer.message("Planning clone operation")
 
 		for target_reference, target_reference_placement in placement_strategy:
-			logger.info("Planning clone of subcircuit around %s", target_reference.reference)
+			logger.info("Planning clone of subcircuit around %s", target_reference.component_instance.reference)
 			for source_footprint in selection.source_footprints:
-				source_path = hierarchy.get_path_from_pcb_path(source_footprint.GetPath())
+				# TOOD: Proper MultiMaps for each component, we can't just do prefix matching if the subcircuit is spread over several sheets
+				source_path = schematic.footprints[EntityPath.parse(source_footprint.GetPath())].component_instance.units[0].path
 				target_reference_path = target_reference.path
 				target_path = target_reference_path[:-1] + source_path[-1]
-				source_footprint = hierarchy.footprints[source_path]
-				target_footprint = hierarchy.footprints[target_path]
-				logger.debug(f"Matched source %s to target %s", source_footprint, target_footprint)
+				source_footprint = schematic.footprints[source_path]
+				target_footprint = schematic.footprints[target_path]
+				logger.debug("Matched source %s to target %s", source_footprint, target_footprint)
 				# Apply placement
 				transaction_builder.add_item(
 					source_reference=source_reference_placement,
 					target_reference=target_reference_placement,
-					source_item=source_footprint.data,
-					target_item=target_footprint.data,
+					source_item=source_footprint.pcbnew_footprint,
+					target_item=target_footprint.pcbnew_footprint,
 				)
 			for source_track in selection.source_tracks:
 				transaction_builder.add_item(
