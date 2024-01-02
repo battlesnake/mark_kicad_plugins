@@ -126,7 +126,11 @@ class CloneService():
 		for target_reference, target_reference_placement in placement_strategy:
 			logger.info("Planning clone of subcircuit around %s", target_reference.component_instance.reference)
 			for source_footprint in selection.source_footprints:
-				# TOOD: Proper MultiMaps for each component, we can't just do prefix matching if the subcircuit is spread over several sheets
+				# TODO: Proper MultiMaps for each component, we can't just do
+				# prefix matching if the subcircuit is spread over several
+				# sheets.  We don't need to care about multi-unit, just match
+				# the sheets for the first unit - since all units map to the
+				# same footprint anyway.
 				source_path = schematic.footprints[EntityPath.parse(source_footprint.GetPath())].component_instance.units[0].path
 				target_reference_path = target_reference.path
 				target_path = target_reference_path[:-1] + source_path[-1]
