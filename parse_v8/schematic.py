@@ -96,6 +96,7 @@ class SheetDefinition():
 	version: str
 	filename: str
 	symbols: List["SymbolDefinition"] = field(repr=False)
+	instances: List["SheetInstance"]
 
 
 @dataclass
@@ -342,6 +343,7 @@ class SchematicLoader():
 				version=version,
 				filename=filename,
 				symbols=[],
+				instances=[],
 			)
 			sheet_instances = [
 				SheetInstanceMetadata(
@@ -407,6 +409,7 @@ class SchematicLoader():
 				)
 				self.sheet_instances.append(sheet_instance)
 				parent.children.append(sheet_instance)
+				definition.instances.append(sheet_instance)
 				instantiante_inner_sheets(sheet_instance)
 
 		instantiante_inner_sheets(self.root_sheet_instance)

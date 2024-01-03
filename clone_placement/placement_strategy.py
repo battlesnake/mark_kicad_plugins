@@ -2,7 +2,7 @@ from functools import reduce
 from typing import final, Sequence, Iterator, Tuple, Callable, Dict, List, cast
 from abc import ABC, abstractmethod
 
-from ..parse_v8 import Footprint, SheetInstance
+from ..parse_v8 import SheetInstance, Footprint
 
 from .placement import Placement
 

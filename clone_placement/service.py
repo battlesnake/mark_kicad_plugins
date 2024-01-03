@@ -132,6 +132,8 @@ class CloneService():
 				# the sheets for the first unit - since all units map to the
 				# same footprint anyway.
 				source_path = schematic.footprints[EntityPath.parse(source_footprint.GetPath())].component_instance.units[0].path
+				# TODO: Adjust the -1 to be -n, as we may need to splice in a
+				# few levels of sheets too
 				target_reference_path = target_reference.path
 				target_path = target_reference_path[:-1] + source_path[-1]
 				source_footprint = schematic.footprints[source_path]

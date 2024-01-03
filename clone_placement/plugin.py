@@ -47,17 +47,10 @@ class ClonePlugin(Plugin):
 			for footprint in footprints
 			for symbol_instance in footprint.component_instance.units
 		]
-		assert footprint_sheet_paths
-		common_prefix: EntityPath = footprint_sheet_paths[0]
-		for path in footprint_sheet_paths:
-			common_prefix = common_prefix & path
+		assert footprint_sheet_paths, "No footprints provided"
+		common_prefix = reduce(EntityPath.__and__, footprint_sheet_paths)
+		assert common_prefix, "No valid common ancestor of provided footprints/symbol-units"
 		return self.schematic.sheet_instances[common_prefix]
-
-	def get_selected_footprints(self) -> List[Footprint]:
-		return [
-			self.schematic.footprints[EntityPath.parse(footprint.GetPath())]
-			for footprint in self.filter_selected(self.board.Footprints())
-		]
 
 	def execute(self) -> None:
 		logger = self.logger
@@ -100,9 +93,14 @@ class ClonePlugin(Plugin):
 			for symbol in reference_symbols
 		]
 		if len(reference_sheets) > 1:
-			raise UserException("Reference symbol is spread over several sheets, this currently is not supported")
+			logger.warn("Reference symbol is spread over several sheets")
+		reference_sheet_paths = [
+			sheet.path
+			for sheet in reference_sheets
+		]
+		reference_sheet_nearest_path = reduce(EntityPath.__and__, reference_sheet_paths)
+		reference_sheet = schematic.sheet_instances[reference_sheet_nearest_path]
 		reference_symbol = reference_symbols[0]
-		reference_sheet = reference_sheets[0]
 
 		self.logger.info("Reference footprint: %s", reference_footprint.component_instance)
 		self.logger.info("Reference footprint's symbol's sheet instance: %s", reference_sheet)
@@ -115,23 +113,14 @@ class ClonePlugin(Plugin):
 
 		self.logger.info("Peer footprints: %s", ", ".join(str(symbol.reference) for symbol in peer_symbols))
 
-		relevant_sheet_instances = [
-			peer_symbol.sheet
-			for peer_symbol in peer_symbols
+		peer_sheet_instances = [
+			peer_sheet_instance
+			for peer_sheet_instance in reference_sheet.definition.instances
+			if peer_sheet_instance != reference_sheet
 		]
 
-		for instance in relevant_sheet_instances:
+		for instance in peer_sheet_instances:
 			self.logger.debug("Peer sheet instances: %s", instance)
-
-		subcircuit_root_sheet_instances = set(
-			schematic.sheet_instances[
-				sheet.path[0:len(sheet.path) - common_ancestor_up_levels]
-			]
-			for sheet in relevant_sheet_instances
-		)
-
-		for sheet_instance in subcircuit_root_sheet_instances:
-			self.logger.info("Sheet instance we can clone to: %s", sheet_instance)
 
 		selected_footprint_bboxes = [
 			footprint.pcbnew_footprint.GetBoundingBox(True, True)
@@ -167,7 +156,7 @@ class ClonePlugin(Plugin):
 		)
 
 		settings = CloneSettings(
-			instances=set(subcircuit_root_sheet_instances),
+			instances=set(peer_sheet_instances),
 			placement=ClonePlacementSettings(
 				strategy=ClonePlacementStrategyType.RELATIVE,
 				relative=ClonePlacementRelativeStrategySettings(
@@ -190,7 +179,7 @@ class ClonePlugin(Plugin):
 		view = CloneSettingsView(
 			logger=logger,
 			instances=sorted(
-				subcircuit_root_sheet_instances,
+				peer_sheet_instances,
 				key=lambda instance: instance.path,
 			),
 			footprints=sorted(
