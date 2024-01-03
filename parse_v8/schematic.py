@@ -540,12 +540,14 @@ class SchematicLoader():
 				unit.component = component_instance
 
 	def read_footprints(self, board: BOARD):
+		logger.info("Reading footprints")
 		component_instances = {
 			component_instance.reference.designator: component_instance
 			for component_instance in self.component_instances
 		}
 		for pcbnew_footprint in board.Footprints():
 			reference = pcbnew_footprint.GetReference()
+			logger.info("Reading footprint %", reference)
 			component_instance = component_instances[reference]
 			footprint = Footprint(
 				path=EntityPath.parse(pcbnew_footprint.GetPath()),
