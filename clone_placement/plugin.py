@@ -24,6 +24,7 @@ from .placement_settings import (
 	ClonePlacementSettings,
 	ClonePlacementStrategyType,
 )
+from .spath import Spath
 
 ItemType = TypeVar("ItemType", bound=BOARD_ITEM)
 
@@ -81,46 +82,72 @@ class ClonePlugin(Plugin):
 			logger.error("No footprints selected")
 			raise UserException("No footprints in selection")
 
+		selected_units = [
+			unit
+			for footprint in selected_footprints
+			for unit in footprint.component_instance.units
+		]
+		logger.info("Total selected footprints: %d", len(selected_footprints))
+		logger.info("Total selected units: %d", len(selected_units))
+
+		selected_unit_sheet_paths = [
+			Spath.create(unit.sheet, schematic.root_sheet_instance)
+			for unit in selected_units
+		]
+
+		selected_prefix = reduce(Spath.__and__, selected_unit_sheet_paths)
+		logger.info("Selection prefix: %s", selected_prefix)
+		assert len(selected_prefix) > 0
+
+		selected_unit_relative_paths = [
+			path[len(selected_prefix):]
+			for path in selected_unit_sheet_paths
+		]
+		logger.info("Paths to selected footprints, relative to selection prefix:")
+		for path in sorted(set(selected_unit_relative_paths)):
+			logger.info(" * %s", path)
+
 		selected_footprints_common_ancestor = self.get_common_ancestor_of_footprints(selected_footprints)
 		self.logger.info("Common ancestor sheet of all selected footprints: %s", selected_footprints_common_ancestor)
 
 		reference_footprint = selected_footprints[0]
-		reference_symbols = reference_footprint.component_instance.units
-		if len(reference_symbols) > 1:
-			raise UserException("Reference footprint has corresponding multiple schematic units, this is currently not supported")
-		reference_sheets = [
-			symbol.sheet
-			for symbol in reference_symbols
+		logger.info("Taking %s to be reference footprint for now", reference_footprint.component_instance.reference)
+
+		reference_unit = reference_footprint.component_instance.units[0]
+		logger.info("Reference instance of symbol-unit: %s", reference_unit.reference)
+
+		sibling_unit_paths = [
+			Spath.create(unit.sheet, schematic.root_sheet_instance)
+			for unit in reference_unit.definition.instances
 		]
-		if len(reference_sheets) > 1:
-			logger.warn("Reference symbol is spread over several sheets")
-		reference_sheet_paths = [
-			sheet.path
-			for sheet in reference_sheets
+		assert len(set(sibling_unit_paths)) == len(sibling_unit_paths)
+
+		sibling_unit_base_paths = [
+			path[0:len(selected_prefix)]
+			for path in sibling_unit_paths
 		]
-		reference_sheet_nearest_path = reduce(EntityPath.__and__, reference_sheet_paths)
-		reference_sheet = schematic.sheet_instances[reference_sheet_nearest_path]
-		reference_symbol = reference_symbols[0]
+		assert selected_prefix in sibling_unit_base_paths
+		logger.info("Sibling unit base paths:")
+		for path in sorted(set(sibling_unit_base_paths)):
+			logger.info(" * %s", path)
 
-		self.logger.info("Reference footprint: %s", reference_footprint.component_instance)
-		self.logger.info("Reference footprint's symbol's sheet instance: %s", reference_sheet)
-
-		common_ancestor_up_levels = len(reference_sheet.path) - len(selected_footprints_common_ancestor.path)
-
-		self.logger.info("Levels from reference footprint's sheet instance to common ancestor of all selected footprints: %s", common_ancestor_up_levels)
-
-		peer_symbols = reference_symbol.definition.instances
-
-		self.logger.info("Peer footprints: %s", ", ".join(str(symbol.reference) for symbol in peer_symbols))
-
-		peer_sheet_instances = [
-			peer_sheet_instance
-			for peer_sheet_instance in reference_sheet.definition.instances
-			if peer_sheet_instance != reference_sheet
+		sibling_groups = [
+			[
+				(base_path + relative_path).resolve(root=schematic.root_sheet_instance)
+				for relative_path in selected_unit_relative_paths
+			]
+			for base_path in sibling_unit_base_paths
+			if base_path != selected_prefix
 		]
 
-		for instance in peer_sheet_instances:
-			self.logger.debug("Peer sheet instances: %s", instance)
+		reference_sibling_footprints = [
+			instance.component.footprint
+			for instance in reference_unit.definition.instances
+			if instance != reference_unit
+		]
+		logger.info("Sibling footprints:")
+		for footprint in reference_sibling_footprints:
+			logger.info(" * %s", footprint.component_instance.reference)
 
 		selected_footprint_bboxes = [
 			footprint.pcbnew_footprint.GetBoundingBox(True, True)

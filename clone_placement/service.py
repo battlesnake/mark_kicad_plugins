@@ -15,6 +15,7 @@ from .placement import Placement
 from .placement_strategy import ClonePlacementStrategy, ClonePlacementStrategyType
 from .transaction_builder import CloneTransactionBuilder
 from .transaction import CloneTransaction
+from .spath import Spath
 
 
 @final
@@ -67,17 +68,43 @@ class CloneService():
 
 		BoredUserEntertainer.message("Preparing to clone")
 
+		source_footprints = [
+			schematic.footprints[EntityPath.parse(footprint.GetPath())]
+			for footprint in selection.source_footprints
+		]
+
 		if settings.placement.strategy == ClonePlacementStrategyType.RELATIVE:
 			assert settings.placement.relative.anchor is not None
-			source_reference_footprint = settings.placement.relative.anchor.pcbnew_footprint
+			source_reference = settings.placement.relative.anchor
 		else:
-			source_reference_footprint = selection.source_footprints[0]
-
-		source_reference = schematic.footprints[EntityPath.parse(source_reference_footprint.GetPath())]
+			source_reference = source_footprints[0]
 		logger.info(
 			"Source reference footprint: %s",
 			source_reference.component_instance.reference,
 		)
+
+		source_units = [
+			unit
+			for footprint in source_footprints
+			for unit in footprint.component_instance.units
+		]
+		logger.info("Total source footprints: %d", len(source_footprints))
+		logger.info("Total source units: %d", len(source_units))
+
+		source_unit_sheet_paths = [
+			Spath.create(unit.sheet, schematic.root_sheet_instance)
+			for unit in source_units
+		]
+		source_prefix = reduce(Spath.__and__, source_unit_sheet_paths)
+		logger.info("Source prefix: %s", source_prefix)
+
+		source_unit_relative_paths = [
+			path[len(source_prefix):]
+			for path in source_unit_sheet_paths
+		]
+		logger.info("Paths to source footprints, relative to source prefix:")
+		for path in sorted(set(source_unit_relative_paths)):
+			logger.info(" * %s", path)
 
 		selected_instances = settings.instances
 		for instance in selected_instances:

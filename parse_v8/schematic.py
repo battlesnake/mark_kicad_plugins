@@ -237,6 +237,9 @@ class Schematic():
 	component_instances: Dict[str, ComponentInstance]
 	footprints: Dict[EntityPath, Footprint]
 
+	root_sheet_instance: SheetInstance
+	root_sheet_definition: SheetDefinition
+
 
 # Schematic loader
 
@@ -319,6 +322,8 @@ class SchematicLoader():
 			component_definitions=self.component_definitions,
 			component_instances=to_dict(self.component_instances, lambda item: item.reference.designator),
 			footprints=to_dict(self.footprints, lambda footprint: footprint.path),
+			root_sheet_definition=self.root_sheet_definition,
+			root_sheet_instance=self.root_sheet_instance,
 		)
 
 	def read_sheet_definitions(self):
