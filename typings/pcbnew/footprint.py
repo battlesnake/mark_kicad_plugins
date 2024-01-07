@@ -1,5 +1,6 @@
-from typing import Any
+from typing import Any, Mapping
 
+from .kiid import KIID_PATH
 from .box2i import BOX2I
 from .board_item_container import BOARD_ITEM_CONTAINER
 
@@ -67,7 +68,7 @@ class FOOTPRINT(BOARD_ITEM_CONTAINER):
 	def SetFPID(self, aFPID) -> Any:
 		...
 
-	def GetFPIDAsString(self) -> Any:
+	def GetFPIDAsString(self) -> str:
 		...
 
 	def SetFPIDAsString(self, aFPID) -> Any:
@@ -85,7 +86,7 @@ class FOOTPRINT(BOARD_ITEM_CONTAINER):
 	def SetKeywords(self, aKeywords) -> Any:
 		...
 
-	def GetPath(self) -> Any:
+	def GetPath(self) -> KIID_PATH:
 		...
 
 	def SetPath(self, aPath) -> Any:
@@ -136,7 +137,7 @@ class FOOTPRINT(BOARD_ITEM_CONTAINER):
 	def GetFlag(self) -> Any:
 		...
 
-	def IsNetTie(self) -> Any:
+	def IsNetTie(self) -> bool:
 		...
 
 	def GetNetTiePadGroups(self) -> Any:
@@ -160,13 +161,13 @@ class FOOTPRINT(BOARD_ITEM_CONTAINER):
 	def MoveAnchorPosition(self, aMoveVector) -> Any:
 		...
 
-	def IsFlipped(self) -> Any:
+	def IsFlipped(self) -> bool:
 		...
 
-	def IsConflicting(self) -> Any:
+	def IsConflicting(self) -> bool:
 		...
 
-	def IsPlaced(self) -> Any:
+	def IsPlaced(self) -> bool:
 		...
 
 	def SetIsPlaced(self, isPlaced) -> Any:
@@ -250,19 +251,19 @@ class FOOTPRINT(BOARD_ITEM_CONTAINER):
 	def SetProperty(self, aKey, aVal) -> Any:
 		...
 
-	def IsBoardOnly(self) -> Any:
+	def IsBoardOnly(self) -> bool:
 		...
 
 	def SetBoardOnly(self, aIsBoardOnly=True) -> Any:
 		...
 
-	def IsExcludedFromPosFiles(self) -> Any:
+	def IsExcludedFromPosFiles(self) -> bool:
 		...
 
 	def SetExcludedFromPosFiles(self, aExclude=True) -> Any:
 		...
 
-	def IsExcludedFromBOM(self) -> Any:
+	def IsExcludedFromBOM(self) -> bool:
 		...
 
 	def SetExcludedFromBOM(self, aExclude=True) -> Any:
@@ -340,7 +341,7 @@ class FOOTPRINT(BOARD_ITEM_CONTAINER):
 	def GetEffectiveShape(self, *args) -> Any:
 		...
 
-	def GetProperties(self) -> Any:
+	def GetProperties(self) -> Mapping[str, str]:
 		...
 
 	def GetProperty(self, key) -> Any:

@@ -107,7 +107,7 @@ class BOARD_ITEM(EDA_ITEM):
     def GetBoard(self, *args) -> "BOARD":
         ...
 
-    def GetLayerName(self) -> "wxString":
+    def GetLayerName(self) -> str:
         ...
 
     def Duplicate(self) -> "BOARD_ITEM":
