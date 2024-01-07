@@ -8,7 +8,7 @@ from pcbnew import GetUserUnits, BOARD_ITEM
 from ..utils.kicad_units import UserUnits, SizeUnits
 from ..utils.user_exception import UserException
 
-from ..parse_v8 import EntityPath, SchematicLoader, Schematic
+from ..kicad_v8_loader import EntityPath, SchematicLoader, Schematic
 
 from ..plugin import Plugin
 

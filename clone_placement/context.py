@@ -4,7 +4,7 @@ from typing import Mapping, Sequence
 from .service import CloneSelection
 from .settings import CloneSettings
 
-from ..parse_v8 import Schematic, Footprint, SheetInstance
+from ..kicad_v8_loader import Schematic, Footprint, SheetInstance
 
 
 @dataclass

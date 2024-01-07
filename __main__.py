@@ -5,6 +5,6 @@
 #ClonePluginWrapper(board).Run()
 
 
-from .parse_v8.test_schematic import run
+from .kicad_v8_loader.test_schematic import run
 
 run()

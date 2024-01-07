@@ -2,7 +2,7 @@ from functools import reduce
 from typing import final, Sequence, Iterator, Tuple, Callable, Dict, List
 from abc import ABC, abstractmethod
 
-from ..parse_v8 import Footprint, EntityPath
+from ..kicad_v8_loader import Footprint, EntityPath
 
 from .placement import Placement
 

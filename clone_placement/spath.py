@@ -4,10 +4,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, List, Sequence, TypeVar, Union, overload
 
-from ..parse_v8 import SheetDefinition
-from ..parse_v8 import SheetInstance
-from ..parse_v8 import SymbolDefinition
-from ..parse_v8 import SymbolInstance
+from ..kicad_v8_loader import SheetDefinition
+from ..kicad_v8_loader import SheetInstance
+from ..kicad_v8_loader import SymbolDefinition
+from ..kicad_v8_loader import SymbolInstance
 
 
 SpathObject = Union[SheetDefinition, SymbolDefinition]

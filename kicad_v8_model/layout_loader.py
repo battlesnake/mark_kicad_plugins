@@ -2,7 +2,7 @@ import logging
 from typing import List
 
 from .parser import Parser
-from .entities import Footprint, Schematic
+from .entities import Footprint, Project
 from .entity_path import EntityPath, EntityPathComponent
 from .selection import Selection
 
@@ -11,15 +11,15 @@ logger = logging.getLogger(__name__)
 
 
 class BaseLayoutLoader():
-	schematic: Schematic
+	project: Project
 	footprints: List[Footprint]
 
-	def __init__(self, schematic: Schematic):
-		self.schematic = schematic
+	def __init__(self, project: Project):
+		self.project = project
 		self.footprints = []
 
 	def get_result(self):
-		self.schematic.footprints = {
+		self.project.footprints = {
 			footprint.id: footprint
 			for footprint in self.footprints
 		}
@@ -27,18 +27,25 @@ class BaseLayoutLoader():
 
 class LayoutLoader(BaseLayoutLoader):
 
-	def __init__(self, schematic: Schematic, filename: str):
-		super().__init__(schematic)
+	@staticmethod
+	def load(project: Project, filename: str):
+		loader = LayoutLoader(project, filename)
+		node = Parser().parse_file(filename)
+		loader.read_footprints(node)
+		loader.get_result()
+
+	def __init__(self, project: Project, filename: str):
+		super().__init__(project)
 		pcb_node = Parser().parse_file(filename)
 		self.read_footprints(pcb_node)
 		self.get_result()
 
 	def read_footprints(self, pcb_node: Selection):
 		node = pcb_node.kicad_pcb
-		schematic = self.schematic
+		project = self.project
 		component_instances = {
 			unit.path: component_instance
-			for component_instance in schematic.component_instances.values()
+			for component_instance in project.component_instances.values()
 			for unit in component_instance.units
 		}
 		for footprint_node in node.footprint:

@@ -10,9 +10,9 @@ import logging
 
 from pcbnew import BOARD
 
-from .entity_path import EntityPath, EntityPathComponent
-from .entities import Footprint, Schematic
-from .layout import BaseLayoutLoader
+from ..kicad_v8_model.entity_path import EntityPath, EntityPathComponent
+from ..kicad_v8_model.entities import Footprint, Project
+from ..kicad_v8_model.layout_loader import BaseLayoutLoader
 
 
 logger = logging.getLogger(__name__)
@@ -21,14 +21,14 @@ logger = logging.getLogger(__name__)
 class PluginLayoutLoader(BaseLayoutLoader):
 
 	@staticmethod
-	def load(schematic: Schematic, board: BOARD):
-		loader = PluginLayoutLoader(schematic)
+	def load(project: Project, board: BOARD):
+		loader = PluginLayoutLoader(project)
 		loader.read_footprints(board)
 		loader.get_result()
 
 	def read_footprints(self, board: BOARD):
 		logger.info("Reading footprints")
-		schematic = self.schematic
+		schematic = self.project
 		for pcbnew_footprint in board.Footprints():
 			reference = pcbnew_footprint.GetReference()
 			logger.info("Reading footprint %", reference)

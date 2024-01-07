@@ -6,7 +6,7 @@ import wx.dataview
 
 from ..utils.kicad_units import UserUnits, SizeUnits
 
-from ..parse_v8 import SheetInstance, Footprint
+from ..kicad_v8_loader import SheetInstance, Footprint
 
 from ..ui.list_box_adapter import StaticListBoxAdapter
 from ..ui.choice_adapter import StaticChoiceAdapter

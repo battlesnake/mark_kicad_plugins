@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import re
 from pathlib import Path
 
-from parse_v8.entity_path import EntityPath, EntityPathComponent
+from .entity_path import EntityPath, EntityPathComponent
 
 
 COMPONENT_REFERENCE_VALIDATOR = re.compile(r"^(#?[A-Z]+)([0-9]+)$")
@@ -189,6 +189,7 @@ class Project():
 	stuff too, perhaps rename from Schematic to Project?
 	"""
 
+	name: str = field(init=False)
 	sheet_definitions: Dict[str, SheetDefinition] = field(default_factory=dict)
 	sheet_instances: Dict[EntityPath, SheetInstance] = field(default_factory=dict)
 	symbol_definitions: Dict[EntityPathComponent, SymbolDefinition] = field(default_factory=dict)

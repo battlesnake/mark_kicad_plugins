@@ -9,7 +9,7 @@ from ..utils.multi_map import MultiMap
 
 from .entities import (
 	ComponentReference,
-	Schematic,
+	Project,
 	SheetDefinition,
 	SheetInstance,
 	SymbolDefinition,
@@ -73,14 +73,14 @@ class ComponentInstanceMetadata():
 	symbol_instance: SymbolInstance
 
 
-# Schematic loader
+# Project loader
 
 
 class SchematicLoader():
-	schematic: Schematic
+	project: Project
 	filename: str
-	project: str
-	schematic_loader: Callable[[str], Selection]
+	project_name: str
+	sheet_loader: Callable[[str], Selection]
 
 	# use filename instead of id, there is significant risk of copy/paste
 	# hierarchical sheets causing UUID clashes
@@ -100,18 +100,18 @@ class SchematicLoader():
 	root_sheet_instance: SheetInstance
 
 	@staticmethod
-	def load(schematic: Schematic, filename: str):
-		schematic_loader = SchematicLoader(schematic, filename)
-		schematic_loader.read_schematic()
-		schematic_loader.get_result()
+	def load(project: Project, filename: str):
+		sheet_loader = SchematicLoader(project, filename)
+		sheet_loader.read_schematic()
+		sheet_loader.get_result()
 
-	def __init__(self, schematic: Schematic, filename: str, schematic_loader: Optional[Callable[[str], Selection]] = None):
-		self.schematic = schematic
-		if schematic_loader is None:
-			schematic_loader = Parser().parse_file
+	def __init__(self, project: Project, filename: str, sheet_loader: Optional[Callable[[str], Selection]] = None):
+		self.project = project
+		if sheet_loader is None:
+			sheet_loader = Parser().parse_file
 		self.filename = os.path.join(os.path.curdir, filename)
-		self.project = Path(filename).stem
-		self.schematic_loader = schematic_loader
+		self.project_name = Path(filename).stem
+		self.sheet_loader = sheet_loader
 		self.sheet_metadata = {}
 		self.symbol_metadata = {}
 		self.component_definition_metadata = {}
@@ -145,15 +145,16 @@ class SchematicLoader():
 				result[key] = item
 			return result
 
-		schematic = self.schematic
-		schematic.sheet_definitions = to_dict(self.sheet_definitions, lambda item: item.filename)
-		schematic.sheet_instances = to_dict(self.sheet_instances, lambda item: item.path)
-		schematic.symbol_definitions = to_dict(self.symbol_definitions, lambda item: item.id)
-		schematic.symbol_instances = to_dict(self.symbol_instances, lambda item: item.path)
-		schematic.component_definitions = self.component_definitions
-		schematic.component_instances = to_dict(self.component_instances, lambda item: item.reference.designator)
-		schematic.root_sheet_definition = self.root_sheet_definition
-		schematic.root_sheet_instance = self.root_sheet_instance
+		project = self.project
+		project.name = self.project_name
+		project.sheet_definitions = to_dict(self.sheet_definitions, lambda item: item.filename)
+		project.sheet_instances = to_dict(self.sheet_instances, lambda item: item.path)
+		project.symbol_definitions = to_dict(self.symbol_definitions, lambda item: item.id)
+		project.symbol_instances = to_dict(self.symbol_instances, lambda item: item.path)
+		project.component_definitions = self.component_definitions
+		project.component_instances = to_dict(self.component_instances, lambda item: item.reference.designator)
+		project.root_sheet_definition = self.root_sheet_definition
+		project.root_sheet_instance = self.root_sheet_instance
 
 	def read_sheet_definitions(self):
 		logger.info("Reading sheet definition")
@@ -168,8 +169,8 @@ class SchematicLoader():
 				None
 			):
 				return already_loaded
-			logger.info("Reading schematic: %s", filename)
-			node = self.schematic_loader(filename).kicad_sch
+			logger.info("Reading project: %s", filename)
+			node = self.sheet_loader(filename).kicad_sch
 			sheet_id = EntityPathComponent.parse(node.uuid[0])
 			version = node.version[0]
 			sheet_definition = SheetDefinition(
@@ -192,7 +193,7 @@ class SchematicLoader():
 					),
 				)
 				for inner_sheet_node in node.sheet
-				for inner_path_node in inner_sheet_node.instances.project.filter(0, self.project).path
+				for inner_path_node in inner_sheet_node.instances.project.filter(0, self.project_name).path
 			]
 			self.sheet_definitions.append(sheet_definition)
 			self.sheet_metadata[filename] = SheetMetadata(
@@ -209,12 +210,12 @@ class SchematicLoader():
 	def read_sheet_instances(self):
 		logger.info("Reading sheet instances")
 		root_path = EntityPath([self.root_sheet_definition.id])
-		logger.info("Reading sheet instance: %s / %s", self.project, root_path)
+		logger.info("Reading sheet instance: %s / %s", self.project_name, root_path)
 		root_sheet_definition_node = Selection([self.sheet_metadata[self.root_sheet_definition.filename].node])
 		self.root_sheet_instance = SheetInstance(
 			definition=self.root_sheet_definition,
 			path=root_path,
-			name=self.project,
+			name=self.project_name,
 			page=root_sheet_definition_node.sheet_instances.path.page[0],
 			parent=None,
 			children=[],
@@ -288,7 +289,7 @@ class SchematicLoader():
 							designator=path_node.reference[0],
 							unit=int(path_node.unit[0]),
 						)
-						for path_node in symbol_node.instances.project.filter(0, self.project).path
+						for path_node in symbol_node.instances.project.filter(0, self.project_name).path
 					],
 				)
 				self.component_definition_metadata[symbol_definition.id] = ComponentDefinitionMetadata(
