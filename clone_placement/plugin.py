@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, TypeVar, Iterable, final
+from typing import List, Set, TypeVar, Iterable, final
 from functools import reduce
 from math import ceil
 
@@ -8,10 +8,11 @@ from pcbnew import GetUserUnits, BOARD_ITEM
 from ..utils.kicad_units import UserUnits, SizeUnits
 from ..utils.user_exception import UserException
 
-from ..parse_v8 import SheetInstance, Footprint, EntityPath, SchematicLoader, Schematic
+from ..parse_v8 import EntityPath, SchematicLoader, Schematic
 
 from ..plugin import Plugin
 
+from .context import CloneContext, TargetFootprint
 from .service import CloneSelection
 from .settings_controller import CloneSettingsController
 from .settings_view import CloneSettingsView
@@ -29,8 +30,71 @@ from .spath import Spath
 ItemType = TypeVar("ItemType", bound=BOARD_ITEM)
 
 
+T = TypeVar("T")
+
+
+def unique_list(items: Iterable[T]) -> List[T]:
+	result: List[T] = []
+	have_already: Set[T] = set()
+	for item in items:
+		if item in have_already:
+			continue
+		result.append(item)
+		have_already.add(item)
+	return result
+
+
 @final
 class ClonePlugin(Plugin):
+
+	"""
+	Given sheet definitions: a, b, c, d, e
+
+	Where the hierarchy is: a>b>2(c>d>2(e))
+
+	i.e. the instances are:
+		a
+		a.b
+		a.b.c[0]
+		a.b.c[0].d.e[0]
+		a.b.c[0].d.e[1]
+		a.b.c[1]
+		a.b.c[1].d.e[0]
+		a.b.c[1].d.e[1]
+
+	And the relevant symbols in each sheet are:
+		e[0]: sa sb ta
+		e[1]: sc
+		d: sd
+
+	And all of those symbols from sheets under c[0] are selected
+
+	The following prefixes exist:
+
+		Selection common prefix:
+			a.b.c[0].d
+
+		All instances common prefix:
+			a.b
+
+		Instance prefixes:
+			a.b.c[0].d
+			a.b.c[1].d
+
+		Relative symbol paths:
+			e[0].s[0]
+			e[0].s[1]
+			e[0].t[0]
+			s[1].s[0]
+			s[0]
+
+		Mappings from source to target(s):
+			sa: a.b.c[1].d.e[0].s[0]
+			sb: a.b.c[1].d.e[0].s[1]
+			ta: a.b.c[1].d.e[0].t[0]
+			sc: a.b.c[1].d.e[1].s[0]
+			sd: a.b.c[1].d.s[0]
+	"""
 
 	schematic: Schematic
 
@@ -41,17 +105,6 @@ class ClonePlugin(Plugin):
 			for item in items
 			if item.IsSelected()
 		]
-
-	def get_common_ancestor_of_footprints(self, footprints: Iterable[Footprint]) -> SheetInstance:
-		footprint_sheet_paths = [
-			symbol_instance.sheet.path
-			for footprint in footprints
-			for symbol_instance in footprint.component_instance.units
-		]
-		assert footprint_sheet_paths, "No footprints provided"
-		common_prefix = reduce(EntityPath.__and__, footprint_sheet_paths)
-		assert common_prefix, "No valid common ancestor of provided footprints/symbol-units"
-		return self.schematic.sheet_instances[common_prefix]
 
 	def execute(self) -> None:
 		logger = self.logger
@@ -82,72 +135,78 @@ class ClonePlugin(Plugin):
 			logger.error("No footprints selected")
 			raise UserException("No footprints in selection")
 
-		selected_units = [
-			unit
+		logger.info("Selected footprints (%d):", len(selected_footprints))
+		for footprint in selected_footprints:
+			logger.info(" * %s", footprint.component_instance.reference)
+
+		selected_symbol_spaths = set(
+			Spath.create(unit.sheet, schematic.root_sheet_instance)
 			for footprint in selected_footprints
 			for unit in footprint.component_instance.units
-		]
-		logger.info("Total selected footprints: %d", len(selected_footprints))
-		logger.info("Total selected units: %d", len(selected_units))
+		)
+		logger.info("Selected symbol spaths:")
+		for spath in selected_symbol_spaths:
+			logger.info(" * %s", spath)
 
-		selected_unit_sheet_paths = [
-			Spath.create(unit.sheet, schematic.root_sheet_instance)
-			for unit in selected_units
-		]
+		selected_symbols_base_spath = reduce(Spath.__and__, selected_symbol_spaths).without_symbol()
+		logger.info("Selection prefix spath: %s", selected_symbols_base_spath)
+		assert len(selected_symbols_base_spath) > 0
 
-		selected_prefix = reduce(Spath.__and__, selected_unit_sheet_paths)
-		logger.info("Selection prefix: %s", selected_prefix)
-		assert len(selected_prefix) > 0
+		source_sheet = selected_symbols_base_spath.resolve_sheet(schematic.root_sheet_instance)
 
-		selected_unit_relative_paths = [
-			path[len(selected_prefix):]
-			for path in selected_unit_sheet_paths
+		selected_symbols_relative_spaths = [
+			path[len(selected_symbols_base_spath):]
+			for path in selected_symbol_spaths
 		]
 		logger.info("Paths to selected footprints, relative to selection prefix:")
-		for path in sorted(set(selected_unit_relative_paths)):
-			logger.info(" * %s", path)
+		for spath in selected_symbols_relative_spaths:
+			logger.info(" * %s", spath)
 
-		selected_footprints_common_ancestor = self.get_common_ancestor_of_footprints(selected_footprints)
-		self.logger.info("Common ancestor sheet of all selected footprints: %s", selected_footprints_common_ancestor)
+		reference_symbol_instances = selected_footprints[0].component_instance.units[0].definition.instances
 
-		reference_footprint = selected_footprints[0]
-		logger.info("Taking %s to be reference footprint for now", reference_footprint.component_instance.reference)
-
-		reference_unit = reference_footprint.component_instance.units[0]
-		logger.info("Reference instance of symbol-unit: %s", reference_unit.reference)
-
-		sibling_unit_paths = [
-			Spath.create(unit.sheet, schematic.root_sheet_instance)
-			for unit in reference_unit.definition.instances
+		reference_symbol_instances_spaths = [
+			Spath.create(symbol, schematic.root_sheet_instance)
+			for symbol in reference_symbol_instances
 		]
-		assert len(set(sibling_unit_paths)) == len(sibling_unit_paths)
 
-		sibling_unit_base_paths = [
-			path[0:len(selected_prefix)]
-			for path in sibling_unit_paths
+		instances_prefix_spaths = [
+			instance_spath[0:len(selected_symbols_base_spath)]
+			for instance_spath in reference_symbol_instances_spaths
 		]
-		assert selected_prefix in sibling_unit_base_paths
-		logger.info("Sibling unit base paths:")
-		for path in sorted(set(sibling_unit_base_paths)):
-			logger.info(" * %s", path)
 
-		sibling_groups = [
-			[
-				(base_path + relative_path).resolve(root=schematic.root_sheet_instance)
-				for relative_path in selected_unit_relative_paths
+		footprint_mapping = {
+			source_footprint: [
+				TargetFootprint(
+					base_sheet=instance_prefix_spath.resolve_sheet(schematic.root_sheet_instance),
+					footprint=target_spath.resolve_symbol(schematic.root_sheet_instance).component.footprint
+				)
+				for instance_prefix_spath in instances_prefix_spaths
+				for target_spath in (
+					(
+						instance_prefix_spath + source_spath[len(selected_symbols_base_spath):]
+					),
+				)
 			]
-			for base_path in sibling_unit_base_paths
-			if base_path != selected_prefix
-		]
+			for source_footprint in selected_footprints
+			for source_spath in (
+				Spath.create(
+					source_footprint.component_instance.units[0],
+					schematic.root_sheet_instance
+				),
+			)
+		}
 
-		reference_sibling_footprints = [
-			instance.component.footprint
-			for instance in reference_unit.definition.instances
-			if instance != reference_unit
+		logger.info("Footprint mappings:")
+		for source, targets in footprint_mapping.items():
+			logger.info(" * %s", source.component_instance.reference)
+			for target in targets:
+				logger.info("    - %s", target.footprint.component_instance.reference)
+
+		base_sheets = [
+			instance_prefix_spath.resolve_sheet(schematic.root_sheet_instance)
+			for instance_prefix_spath in instances_prefix_spaths
+			if instance_prefix_spath != selected_symbols_base_spath
 		]
-		logger.info("Sibling footprints:")
-		for footprint in reference_sibling_footprints:
-			logger.info(" * %s", footprint.component_instance.reference)
 
 		selected_footprint_bboxes = [
 			footprint.pcbnew_footprint.GetBoundingBox(True, True)
@@ -183,7 +242,7 @@ class ClonePlugin(Plugin):
 		)
 
 		settings = CloneSettings(
-			instances=set(peer_sheet_instances),
+			instances=set(base_sheets),
 			placement=ClonePlacementSettings(
 				strategy=ClonePlacementStrategyType.RELATIVE,
 				relative=ClonePlacementRelativeStrategySettings(
@@ -201,19 +260,24 @@ class ClonePlugin(Plugin):
 			)
 		)
 
-		settings_controller = CloneSettingsController(logger, board, schematic, selection)
+		context = CloneContext(
+			schematic=schematic,
+			selection=selection,
+			settings=settings,
+			selected_footprints=selected_footprints,
+			source_sheet=source_sheet,
+			footprint_mapping=footprint_mapping,
+		)
+
+		settings_controller = CloneSettingsController(
+			logger=logger,
+			board=board,
+			context=context,
+		)
 
 		view = CloneSettingsView(
 			logger=logger,
-			instances=sorted(
-				peer_sheet_instances,
-				key=lambda instance: instance.path,
-			),
-			footprints=sorted(
-				selected_footprints,
-				key=lambda footprint: footprint.component_instance.reference,
-			),
+			context=context,
 			controller=settings_controller,
-			settings=settings,
 		)
 		view.execute()

@@ -3,22 +3,25 @@ from logging import Logger
 
 from pcbnew import BOARD, Refresh as RefreshView
 
-from ..parse_v8 import Schematic
-
 from ..utils.error_handler import error_handler
 
+from .context import CloneContext
 from .settings import CloneSettings
-from .service import CloneService, CloneSelection
+from .service import CloneService
 
 
 @final
 class CloneSettingsController():
 
-	def __init__(self, logger: Logger, board: BOARD, schematic: Schematic, selection: CloneSelection):
+	def __init__(
+		self,
+		logger: Logger,
+		board: BOARD,
+		context: CloneContext,
+	):
 		self.logger = logger.getChild(type(self).__name__)
 		self.board = board
-		self.schematic = schematic
-		self.selection = selection
+		self.context = context
 		self.is_preview = False
 		self.service = CloneService.get()
 
@@ -27,7 +30,11 @@ class CloneSettingsController():
 		self.is_preview = False
 
 	def clone(self, settings: CloneSettings) -> None:
-		self.service.clone_subcircuits(self.logger, self.schematic, self.selection, settings)
+		self.service.clone_subcircuits(
+			self.logger,
+			self.context,
+			settings,
+		)
 
 	def refresh_view(self):
 		RefreshView()

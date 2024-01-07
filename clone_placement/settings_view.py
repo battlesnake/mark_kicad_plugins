@@ -1,4 +1,4 @@
-from typing import Optional, List, final, cast
+from typing import Optional, final, cast
 from logging import Logger
 
 import wx
@@ -12,6 +12,7 @@ from ..ui.list_box_adapter import StaticListBoxAdapter
 from ..ui.choice_adapter import StaticChoiceAdapter
 from ..ui.tree_control_branch_selection_adapter import TreeControlBranchSelectionAdapter
 
+from .context import CloneContext
 from .placement_settings import ClonePlacementStrategyType, ClonePlacementGridFlow, ClonePlacementGridSort
 from .settings import CloneSettings
 from .settings_view_design import CloneSettingsViewDesign
@@ -26,17 +27,16 @@ class CloneSettingsView(CloneSettingsViewDesign):
 	def __init__(
 		self,
 		logger: Logger,
-		instances: List[SheetInstance],
-		footprints: List[Footprint],
+		context: CloneContext,
 		controller: CloneSettingsController,
-		settings: CloneSettings,
 	):
 		super().__init__(parent=wx.FindWindowByName("PcbFrame"))
 		self.logger = logger.getChild(cast(str, type(self).__name__))
 		self.controller = controller
-		if not footprints:
+		self.target_sheets = list(context.instance_groups.keys())
+		if not context.selected_footprints:
 			raise ValueError("No footprints provided")
-		self.settings = settings
+		self.settings = context.settings
 		this = self
 
 		self.position_strategy.SetSelection(list(ClonePlacementStrategyType).index(self.settings.placement.strategy))
@@ -61,7 +61,7 @@ class CloneSettingsView(CloneSettingsViewDesign):
 				return item.name
 
 		self.instances_adapter = InstancesAdapter(
-			items=instances,
+			items=self.target_sheets,
 			get_parent=lambda item: item.parent,
 			control=self.instances,
 			selection=self.settings.instances,
@@ -75,7 +75,7 @@ class CloneSettingsView(CloneSettingsViewDesign):
 
 		self.relative_anchor_adapter = RelativeAnchorAdapter(
 			control=self.relative_anchor,
-			items=footprints,
+			items=context.selected_footprints,
 			selection=[item for item in [self.settings.placement.relative.anchor] if item is not None],
 		)
 
@@ -155,6 +155,7 @@ class CloneSettingsView(CloneSettingsViewDesign):
 
 	def grid_flow_direction_adapter_selection_changed(self) -> None:
 		self.settings.placement.grid.flow = self.grid_flow_direction_adapter.selection
+		# Swap main/cross intervals
 		self.settings.placement.grid.main_interval, self.settings.placement.grid.cross_interval = self.settings.placement.grid.cross_interval, self.settings.placement.grid.main_interval
 		self.update_length_views()
 		self.model_changed()

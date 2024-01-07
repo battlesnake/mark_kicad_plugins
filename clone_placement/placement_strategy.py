@@ -1,8 +1,8 @@
 from functools import reduce
-from typing import final, Sequence, Iterator, Tuple, Callable, Dict, List, cast
+from typing import final, Sequence, Iterator, Tuple, Callable, Dict, List
 from abc import ABC, abstractmethod
 
-from ..parse_v8 import SheetInstance, Footprint
+from ..parse_v8 import Footprint, EntityPath
 
 from .placement import Placement
 
@@ -21,9 +21,9 @@ class ClonePlacementStrategy(ABC, Iterator[PlacementResult]):
 	@staticmethod
 	def get(settings: ClonePlacementSettings, reference: Footprint, targets: Sequence[Footprint]) -> "ClonePlacementStrategy":
 		if settings.strategy == ClonePlacementStrategyType.RELATIVE:
-			return ClonePlacementRelativeStrategy(settings.relative, reference, targets)
+			return ClonePlacementRelativeStrategy(settings.relative, reference, iter(targets))
 		elif settings.strategy == ClonePlacementStrategyType.GRID:
-			return ClonePlacementGridStrategy(settings.grid, reference, targets)
+			return ClonePlacementGridStrategy(settings.grid, reference, iter(targets))
 		else:
 			raise ValueError(settings.strategy)
 
@@ -31,7 +31,7 @@ class ClonePlacementStrategy(ABC, Iterator[PlacementResult]):
 @final
 class ClonePlacementRelativeStrategy(ClonePlacementStrategy):
 
-	def __init__(self, settings: ClonePlacementRelativeStrategySettings, reference: Footprint, targets: Sequence[Footprint]):
+	def __init__(self, settings: ClonePlacementRelativeStrategySettings, reference: Footprint, targets: Iterator[Footprint]):
 		super().__init__()
 		self.settings = settings
 		self.targets = filter(lambda target: target != reference, targets)
@@ -45,8 +45,19 @@ class ClonePlacementRelativeStrategy(ClonePlacementStrategy):
 @final
 class ClonePlacementGridStrategy(ClonePlacementStrategy):
 
-	@staticmethod
-	def compare_footprint_by_reference(footprint: Footprint) -> List[str | int]:
+	def __init__(self, settings: ClonePlacementGridStrategySettings, reference: Footprint, targets: Iterator[Footprint]):
+		super().__init__()
+		comparators: Dict[ClonePlacementGridSort, Callable[[Footprint], List[str | int]]] = {
+			ClonePlacementGridSort.REFERENCE: self.compare_footprint_by_reference,
+			ClonePlacementGridSort.HIERARCHY: self.compare_footprint_by_hierarchy,
+		}
+		self.reference = Placement.of(reference.pcbnew_footprint)
+		self.targets = sorted(targets, key=comparators[settings.sort]).__iter__()
+		self.settings = settings
+		self.main: int = 0
+		self.cross: int = 0
+
+	def compare_footprint_by_reference(self, footprint: Footprint) -> List[str | int]:
 		""" Key-function for sorting footprints (number, then type) """
 		number = int("".join(
 			ch
@@ -58,8 +69,7 @@ class ClonePlacementGridStrategy(ClonePlacementStrategy):
 			footprint.component_instance.reference.designator
 		]
 
-	@staticmethod
-	def compare_footprint_by_hierarchy(footprint: Footprint) -> List[str | int]:
+	def compare_footprint_by_hierarchy(self, footprint: Footprint) -> List[str | int]:
 		""" Key-function for sorting footprints """
 		result: List[str] = []
 		sheets = [
@@ -70,26 +80,13 @@ class ClonePlacementGridStrategy(ClonePlacementStrategy):
 			sheet.path
 			for sheet in sheets
 		]
-		common_sheet: SheetInstance | None = cast(
-			SheetInstance,
-			reduce(lambda a, b: a & b, sheet_paths)  # pyright: ignore
-		)
+		common_sheet_path = reduce(EntityPath.__and__, sheet_paths)
+		# TODO fix
+		common_sheet = self.schematic.sheet_instances[common_sheet_path]
 		while common_sheet is not None:
 			result.append(common_sheet.name)
 			common_sheet = common_sheet.parent
 		return list(reversed(result))
-
-	def __init__(self, settings: ClonePlacementGridStrategySettings, reference: Footprint, targets: Sequence[Footprint]):
-		super().__init__()
-		comparators: Dict[ClonePlacementGridSort, Callable[[Footprint], List[str | int]]] = {
-			ClonePlacementGridSort.REFERENCE: self.compare_footprint_by_reference,
-			ClonePlacementGridSort.HIERARCHY: self.compare_footprint_by_hierarchy,
-		}
-		self.reference = Placement.of(reference.pcbnew_footprint)
-		self.targets = sorted(targets, key=comparators[settings.sort]).__iter__()
-		self.settings = settings
-		self.main: int = 0
-		self.cross: int = 0
 
 	def next_position(self) -> Tuple[int, int]:
 		main, cross = self.main, self.cross
