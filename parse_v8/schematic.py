@@ -98,6 +98,9 @@ class SheetDefinition():
 	symbols: List["SymbolDefinition"] = field(repr=False)
 	instances: List["SheetInstance"]
 
+	def __str__(self):
+		return Path(self.filename).stem
+
 
 @dataclass
 class SheetInstance():
@@ -110,6 +113,9 @@ class SheetInstance():
 	children: List["SheetInstance"] = field(repr=False)
 	symbols: List["SymbolInstance"] = field(repr=False)
 
+	def __str__(self):
+		return f"{self.name}#{self.page}"
+
 
 @dataclass
 class SymbolDefinition():
@@ -119,6 +125,9 @@ class SymbolDefinition():
 	reference: SymbolReference  # Reference in own sheet file, not in schematic/layout
 	instances: List["SymbolInstance"] = field(repr=False)
 	component: "ComponentDefinition" = field(init=False, repr=False)
+
+	def __str__(self):
+		return f"{self.sheet}/{self.id}"
 
 	def __hash__(self):
 		return hash(self.id)
@@ -133,6 +142,9 @@ class SymbolInstance():
 	reference: SymbolReference
 	component: "ComponentInstance" = field(init=False, repr=False)
 
+	def __str__(self):
+		return f"{self.sheet}/{self.reference}"
+
 	def __hash__(self):
 		return hash(self.path)
 
@@ -142,6 +154,9 @@ class Footprint():
 	path: EntityPath
 	pcbnew_footprint: FOOTPRINT
 	component_instance: "ComponentInstance"
+
+	def __str__(self):
+		return f"{self.component_instance.reference}"
 
 
 @dataclass
@@ -154,6 +169,9 @@ class ComponentDefinition():
 	on_board: bool
 	dnp: bool
 	instances: List["ComponentInstance"] = field(repr=False)
+
+	def __str__(self):
+		return f"{self.library_id}({self.value})"
 
 	def __hash__(self):
 		return id(self)
@@ -168,8 +186,32 @@ class ComponentInstance():
 	units: List[SymbolInstance] = field(repr=False)
 	footprint: Footprint = field(init=False)
 
+	def __str__(self):
+		return f"{self.reference}"
+
 	def __hash__(self):
 		return hash(self.reference)
+
+
+# Schematic scope
+
+
+SchematicEntity = Union[SheetInstance, SymbolInstance, ComponentInstance]
+SchematicEntityType = Type[SchematicEntity]
+
+
+@dataclass
+class Schematic():
+	sheet_definitions: Dict[str, SheetDefinition]
+	sheet_instances: Dict[EntityPath, SheetInstance]
+	symbol_definitions: Dict[EntityPathComponent, SymbolDefinition]
+	symbol_instances: Dict[EntityPath, SymbolInstance]
+	component_definitions: List[ComponentDefinition]
+	component_instances: Dict[str, ComponentInstance]
+	footprints: Dict[EntityPath, Footprint]
+
+	root_sheet_instance: SheetInstance
+	root_sheet_definition: SheetDefinition
 
 
 # Internal metadata classes to store temporary info and relations while reading
@@ -218,27 +260,6 @@ class ComponentDefinitionMetadata():
 class ComponentInstanceMetadata():
 	""" Intermediate data to help with loading stuff """
 	symbol_instance: SymbolInstance
-
-
-# Schematic scope
-
-
-SchematicEntity = Union[SheetInstance, SymbolInstance, ComponentInstance]
-SchematicEntityType = Type[SchematicEntity]
-
-
-@dataclass
-class Schematic():
-	sheet_definitions: Dict[str, SheetDefinition]
-	sheet_instances: Dict[EntityPath, SheetInstance]
-	symbol_definitions: Dict[EntityPathComponent, SymbolDefinition]
-	symbol_instances: Dict[EntityPath, SymbolInstance]
-	component_definitions: List[ComponentDefinition]
-	component_instances: Dict[str, ComponentInstance]
-	footprints: Dict[EntityPath, Footprint]
-
-	root_sheet_instance: SheetInstance
-	root_sheet_definition: SheetDefinition
 
 
 # Schematic loader
