@@ -2,10 +2,10 @@ from functools import reduce
 from typing import final, Sequence, Iterator, Tuple, Callable, Dict, List
 from abc import ABC, abstractmethod
 
-from ..kicad_v8_loader import Footprint, EntityPath
+from ..geometry import Vector2
+from ..kicad_v8_model import Footprint, EntityPath, Project
 
 from .placement import Placement
-
 from .placement_settings import ClonePlacementGridFlow, ClonePlacementGridSort, ClonePlacementGridStrategySettings, ClonePlacementRelativeStrategySettings, ClonePlacementStrategyType, ClonePlacementSettings
 
 
@@ -19,11 +19,11 @@ class ClonePlacementStrategy(ABC, Iterator[PlacementResult]):
 		pass
 
 	@staticmethod
-	def get(settings: ClonePlacementSettings, reference: Footprint, targets: Sequence[Footprint]) -> "ClonePlacementStrategy":
+	def get(project: Project, settings: ClonePlacementSettings, reference: Footprint, targets: Sequence[Footprint]) -> "ClonePlacementStrategy":
 		if settings.strategy == ClonePlacementStrategyType.RELATIVE:
 			return ClonePlacementRelativeStrategy(settings.relative, reference, iter(targets))
 		elif settings.strategy == ClonePlacementStrategyType.GRID:
-			return ClonePlacementGridStrategy(settings.grid, reference, iter(targets))
+			return ClonePlacementGridStrategy(project, settings.grid, reference, iter(targets))
 		else:
 			raise ValueError(settings.strategy)
 
@@ -31,28 +31,40 @@ class ClonePlacementStrategy(ABC, Iterator[PlacementResult]):
 @final
 class ClonePlacementRelativeStrategy(ClonePlacementStrategy):
 
-	def __init__(self, settings: ClonePlacementRelativeStrategySettings, reference: Footprint, targets: Iterator[Footprint]):
+	def __init__(
+		self,
+		settings: ClonePlacementRelativeStrategySettings,
+		reference: Footprint,
+		targets: Iterator[Footprint],
+	):
 		super().__init__()
 		self.settings = settings
 		self.targets = filter(lambda target: target != reference, targets)
 
 	def __next__(self) -> PlacementResult:
 		target = next(self.targets)
-		placement = Placement.of(target.pcbnew_footprint)
+		placement = Placement.of(target)
 		return target, placement
 
 
 @final
 class ClonePlacementGridStrategy(ClonePlacementStrategy):
 
-	def __init__(self, settings: ClonePlacementGridStrategySettings, reference: Footprint, targets: Iterator[Footprint]):
+	def __init__(
+		self,
+		project: Project,
+		settings: ClonePlacementGridStrategySettings,
+		reference: Footprint,
+		targets: Iterator[Footprint],
+	):
 		super().__init__()
 		comparators: Dict[ClonePlacementGridSort, Callable[[Footprint], List[str | int]]] = {
 			ClonePlacementGridSort.REFERENCE: self.compare_footprint_by_reference,
 			ClonePlacementGridSort.HIERARCHY: self.compare_footprint_by_hierarchy,
 		}
-		self.reference = Placement.of(reference.pcbnew_footprint)
+		self.reference = Placement.of(reference)
 		self.targets = sorted(targets, key=comparators[settings.sort]).__iter__()
+		self.project = project
 		self.settings = settings
 		self.main: int = 0
 		self.cross: int = 0
@@ -61,12 +73,12 @@ class ClonePlacementGridStrategy(ClonePlacementStrategy):
 		""" Key-function for sorting footprints (number, then type) """
 		number = int("".join(
 			ch
-			for ch in footprint.component_instance.reference.designator
+			for ch in footprint.component.reference.designator
 			if ch.isdigit()
 		) or "0")
 		return [
 			number,
-			footprint.component_instance.reference.designator
+			footprint.component.reference.designator
 		]
 
 	def compare_footprint_by_hierarchy(self, footprint: Footprint) -> List[str | int]:
@@ -74,7 +86,7 @@ class ClonePlacementGridStrategy(ClonePlacementStrategy):
 		result: List[str] = []
 		sheets = [
 			unit.sheet
-			for unit in footprint.component_instance.units
+			for unit in footprint.component.units
 		]
 		sheet_paths = [
 			sheet.path
@@ -82,7 +94,7 @@ class ClonePlacementGridStrategy(ClonePlacementStrategy):
 		]
 		common_sheet_path = reduce(EntityPath.__and__, sheet_paths)
 		# TODO fix
-		common_sheet = self.schematic.sheet_instances[common_sheet_path]
+		common_sheet = self.project.sheet_instances[common_sheet_path]
 		while common_sheet is not None:
 			result.append(common_sheet.name)
 			common_sheet = common_sheet.parent
@@ -111,9 +123,8 @@ class ClonePlacementGridStrategy(ClonePlacementStrategy):
 		else:
 			raise ValueError()
 		placement = Placement(
-			x=reference.x + dx,
-			y=reference.y + dy,
-			angle=reference.angle,
+			position=reference.position + Vector2(dx, dy),
+			orientation=reference.orientation,
 			flipped=reference.flipped
 		)
 		return target, placement

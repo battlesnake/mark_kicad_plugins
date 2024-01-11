@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 
 from ..utils.kicad_units import UserUnits
 
-from ..kicad_v8_loader import Footprint
+from ..kicad_v8_model import Footprint
 
 
 class ClonePlacementStrategySettings(ABC):

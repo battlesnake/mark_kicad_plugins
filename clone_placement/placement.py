@@ -1,40 +1,28 @@
 from typing import final
 from dataclasses import dataclass
 
-from pcbnew import BOARD_ITEM, FOOTPRINT, VECTOR2I
+from ..kicad_v8_model import Footprint
+
+from ..geometry import Vector2, Angle
+
+
+PlacementEntity = Footprint
 
 
 @final
-@dataclass
+@dataclass(frozen=True)
 class Placement():
-	x: int
-	y: int
-	angle: float
+	position: Vector2
+	orientation: Angle
 	flipped: bool
 
 	@staticmethod
-	def of(item: BOARD_ITEM) -> "Placement":
-		if isinstance(item, FOOTPRINT):  # Also PAD, but we don't consider those yet
-			position = item.GetPosition()
+	def of(item: PlacementEntity) -> "Placement":
+		if isinstance(item, Footprint):  # Also PAD, but we don't consider those yet
 			return Placement(
-				x=position.x,
-				y=position.y,
-				angle=item.GetOrientationDegrees(),
-				flipped=item.IsFlipped(),
+				position=item.position,
+				orientation=item.orientation,
+				flipped=item.flipped,
 			)
 		else:
-			position = item.GetPosition()
-			# Can not get rotation or flipped state for most items
-			return Placement(
-				x=position.x,
-				y=position.y,
-				angle=0,
-				flipped=False,
-			)
-
-	@property
-	def position(self):
-		return VECTOR2I(
-			x=self.x,
-			y=self.y
-		)
+			raise TypeError()

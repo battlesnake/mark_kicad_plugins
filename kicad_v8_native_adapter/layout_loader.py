@@ -10,6 +10,8 @@ import logging
 
 from pcbnew import BOARD
 
+from ..geometry import Vector2, Angle
+
 from ..kicad_v8_model.entity_path import EntityPath, EntityPathComponent
 from ..kicad_v8_model.entities import Footprint, Project
 from ..kicad_v8_model.layout_loader import BaseLayoutLoader
@@ -39,10 +41,10 @@ class PluginLayoutLoader(BaseLayoutLoader):
 				locked=pcbnew_footprint.IsLocked(),
 				board_only=pcbnew_footprint.IsBoardOnly(),
 				placement_layer=pcbnew_footprint.GetLayerName(),
+				flipped=pcbnew_footprint.IsFlipped(),
 				id=EntityPathComponent.parse(pcbnew_footprint.GetFPIDAsString()),
-				placement_x=position.x,
-				placement_y=position.y,
-				placement_angle=angle,
+				position=Vector2(position.x, position.y),
+				orientation=Angle.from_degrees(angle),
 				properties={
 					key: value
 					for key, value in pcbnew_footprint.GetProperties()

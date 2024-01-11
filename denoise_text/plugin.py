@@ -10,7 +10,7 @@ from ..utils.user_exception import UserException
 
 from ..ui.bored_user_entertainer import BoredUserEntertainer
 
-from ..plugin import Plugin
+from ..kicad_v8_native_adapter import Plugin
 
 
 @dataclass

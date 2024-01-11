@@ -50,6 +50,22 @@ class EntityPathComponent():
     def __gt__(self, other: "EntityPathComponent"):
         return self.value > other.value
 
+    @overload
+    def __add__(self, other: "EntityPathComponent") -> "EntityPath":
+        ...
+
+    @overload
+    def __add__(self, other: "EntityPath") -> "EntityPath":
+        ...
+
+    def __add__(self, other: Union["EntityPath", "EntityPathComponent"]) -> "EntityPath":
+        if isinstance(other, EntityPath):
+            return EntityPath(parts=[self, *other])
+        elif isinstance(other, EntityPathComponent):
+            return EntityPath(parts=[self, other])
+        else:
+            raise TypeError()
+
 
 @dataclass(frozen=True)
 class EntityPath(Sequence[EntityPathComponent]):

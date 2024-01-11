@@ -1,9 +1,11 @@
-from typing import Any, Iterable
+from typing import Any, Iterable, Sequence
 
+from .kiid import KIID
 from .footprint import FOOTPRINT
 from .pcb_track import PCB_TRACK
 from .pcb_group import PCB_GROUP
 from .board_item_container import BOARD_ITEM_CONTAINER
+from .board_item import BOARD_ITEM
 
 
 # TODO
@@ -90,7 +92,7 @@ class BOARD(BOARD_ITEM_CONTAINER):
     def DeleteAllFootprints(self) -> Any:
         ...
 
-    def GetItem(self, aID) -> Any:
+    def GetItem(self, aID: KIID) -> BOARD_ITEM:
         ...
 
     def FillItemMap(self, aMap) -> Any:
@@ -348,7 +350,7 @@ class BOARD(BOARD_ITEM_CONTAINER):
     def __init__(self, *args) -> Any:
         ...
 
-    def GetFootprints(self) -> Any:
+    def GetFootprints(self) -> Sequence[FOOTPRINT]:
         ...
 
     def GetDrawings(self) -> Any:

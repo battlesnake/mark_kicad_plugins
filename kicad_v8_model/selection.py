@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Iterator, List, Sequence, Set
+from typing import Any, Iterator, List, Optional, Sequence, Set, Union
 
 from .node import Node
 
@@ -42,6 +42,26 @@ class Selection():
     def first(self) -> "Selection":
         return Selection([self.nodes[0]])
 
+    def children_by_key(self, key: str) -> "Selection":
+        """ Filter children by key """
+        nodes = [
+            child
+            for node in self.nodes
+            for child in node.children
+            if child.key == key
+        ]
+        return Selection(nodes)
+
+    def value_by_index(self, index: int, default: Optional[str] = None) -> str:
+        """ Get value by index """
+        try:
+            return self._get_one().values[index]
+        except IndexError:
+            if default is not None:
+                return default
+            else:
+                raise
+
     def filter(self, field: int, value: str) -> "Selection":
         """ Filter selection by field value """
         filtered_nodes = [
@@ -53,18 +73,10 @@ class Selection():
         return Selection(filtered_nodes)
 
     def __getitem__(self, index: int) -> str:
-        """ Get value by index """
-        return self._get_one().values[index]
+        return self.value_by_index(index)
 
     def __getattr__(self, key: str) -> "Selection":
-        """ Filter children by key """
-        nodes = [
-            child
-            for node in self.nodes
-            for child in node.children
-            if child.key == key
-        ]
-        return Selection(nodes)
+        return self.children_by_key(key)
 
     def __bool__(self):
         return bool(self.nodes)
@@ -98,6 +110,6 @@ class Selection():
             for line in stringify(node, 0)
         ])
 
-    def __add__(self, other: Sequence[Node]):
+    def __add__(self, other: "Selection"):
         """ Merge selections (no deduplication) """
-        return Selection(self.nodes + list(other))
+        return Selection(self.nodes + other.nodes)

@@ -1,7 +1,7 @@
 from typing import Set
 from dataclasses import dataclass
 
-from ..kicad_v8_loader import SheetInstance
+from ..kicad_v8_model import SheetInstance
 
 from .placement_settings import ClonePlacementSettings
 

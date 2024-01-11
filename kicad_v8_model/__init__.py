@@ -1,7 +1,38 @@
 from .node import Node
 from .selection import Selection
 from .parser import Parser
-from .entity_path import EntityPathComponent, EntityPath
-from .entities import Project, SchematicLoader, Schematic, SheetDefinition, SymbolDefinition, SheetInstance, SymbolInstance, Footprint
+from .entity_path import (
+	EntityPathComponent,
+	EntityPath,
+)
+from .angle import (
+	Angle,
+	AngleUnit,
+)
+from .vector2 import (
+	Vector2,
+)
+from .entity_traits import (
+	HasProperties,
+	HasId,
+	HasPath,
+	HasNet,
+	OnBoard,
+	Net,
+)
+from .entities import (
+	Project,
+	SheetDefinition,
+	SymbolDefinition,
+	SheetInstance,
+	SymbolInstance,
+	Footprint,
+	Route,
+	Graphic,
+)
+from .board import (
+	BoardLayer,
+	Layer,
+)
 from .schematic_loader import SchematicLoader
 from .layout_loader import LayoutLoader

@@ -3,9 +3,9 @@ from logging import Logger
 
 import pcbnew  # pyright: ignore
 
-from ..plugin import Plugin
-from ..plugin import PluginWrapper
-from ..plugin import PluginMetadata
+from ..kicad_v8_native_adapter import Plugin
+from ..kicad_v8_native_adapter import PluginWrapper
+from ..kicad_v8_native_adapter import PluginMetadata
 
 from .plugin import TextPlugin
 

@@ -3,13 +3,21 @@ from dataclasses import dataclass, field
 import re
 from pathlib import Path
 
+from .board import BoardLayer, Layer
 from .entity_path import EntityPath, EntityPathComponent
+from .entity_traits import HasProperties, HasId, HasPath, Net, OnBoard, HasNet
+from .angle import Angle
+from .vector2 import Vector2
+
+
+# Many of the PCB-related dataclasses are incomplete, containing only what we
+# currently need (or slightly more).
 
 
 COMPONENT_REFERENCE_VALIDATOR = re.compile(r"^(#?[A-Z]+)([0-9]+)$")
 
 
-@dataclass(kw_only=True, frozen=True, eq=True)
+@dataclass(frozen=True, eq=True)
 class ComponentReference():
 	""" Reference for one physical component (i.e. all units) """
 
@@ -45,7 +53,7 @@ class ComponentReference():
 		return not (self > other)
 
 
-@dataclass(kw_only=True, frozen=True, eq=True)
+@dataclass(frozen=True, eq=True)
 class SymbolReference(ComponentReference):
 	""" Reference for a logical symbol (i.e. one unit of a physical component) """
 
@@ -68,8 +76,8 @@ class SymbolReference(ComponentReference):
 		return (self.type, self.number, self.unit)
 
 
-@dataclass(kw_only=True)
-class SheetDefinition():
+@dataclass
+class SheetDefinition(HasId):
 	""" Maps to one sheet file i.e. a kicad_sch """
 	id: EntityPathComponent = field(compare=True, hash=True)
 	version: str
@@ -81,11 +89,11 @@ class SheetDefinition():
 		return Path(self.filename).stem
 
 
-@dataclass(kw_only=True)
-class SheetInstance():
+@dataclass
+class SheetInstance(HasPath):
 	""" Maps to an instance of a sheet within the sheet-hierarchy """
-	definition: SheetDefinition
 	path: EntityPath = field(compare=True, hash=True)
+	definition: SheetDefinition
 	name: str
 	page: str
 	parent: Optional["SheetInstance"] = field(repr=False)
@@ -96,11 +104,11 @@ class SheetInstance():
 		return f"{self.name}#{self.page}"
 
 
-@dataclass(kw_only=True)
-class SymbolDefinition():
+@dataclass
+class SymbolDefinition(HasId):
 	""" Maps to a symbol node in a sheet file """
+	id: EntityPathComponent = field(compare=True, hash=True)
 	sheet: SheetDefinition
-	id: EntityPathComponent
 	reference: SymbolReference  # Reference in own sheet file, not in schematic/layout
 	instances: List["SymbolInstance"] = field(repr=False)
 	component: "ComponentDefinition" = field(init=False, repr=False)
@@ -112,12 +120,12 @@ class SymbolDefinition():
 		return hash(self.id)
 
 
-@dataclass(kw_only=True)
-class SymbolInstance():
+@dataclass
+class SymbolInstance(HasPath):
 	""" Maps to a symbol in an instance of a sheet in the sheet-hierarchy """
+	path: EntityPath = field(compare=True, hash=True)
 	sheet: SheetInstance
 	definition: SymbolDefinition
-	path: EntityPath
 	reference: SymbolReference
 	component: "ComponentInstance" = field(init=False, repr=False)
 
@@ -128,16 +136,15 @@ class SymbolInstance():
 		return hash(self.path)
 
 
-@dataclass(kw_only=True)
-class Footprint():
+@dataclass
+class Footprint(HasId, HasProperties, OnBoard):
+	id: EntityPathComponent = field(compare=True, hash=True)
+	properties: Dict[str, str]
+	layer: Layer
 	locked: bool
 	board_only: bool
-	placement_layer: str
-	id: EntityPathComponent = field(hash=True, compare=True)
-	placement_x: float
-	placement_y: float
-	placement_angle: float
-	properties: Dict[str, str]
+	position: Vector2
+	orientation: Angle
 	symbol_path: EntityPath
 	component: "ComponentInstance" = field(init=False, repr=False)
 
@@ -148,11 +155,11 @@ class Footprint():
 		return hash(self.id)
 
 
-@dataclass(kw_only=True)
-class ComponentDefinition():
+@dataclass
+class ComponentDefinition(HasProperties):
+	properties: Dict[str, str]
 	value: str
 	units: List[SymbolDefinition] = field(repr=False)
-	properties: Dict[str, str]
 	symbol_library_id: str
 	in_bom: bool
 	on_board: bool
@@ -166,7 +173,7 @@ class ComponentDefinition():
 		return id(self)
 
 
-@dataclass(kw_only=True)
+@dataclass
 class ComponentInstance():
 	""" Maps to a physical component i.e. a footprint on the PCB """
 	""" (or in some cases, virtual components e.g. for power symbols) """
@@ -182,7 +189,27 @@ class ComponentInstance():
 		return hash(self.reference)
 
 
-@dataclass(kw_only=True, repr=False, eq=False)
+@dataclass
+class Route(HasId, OnBoard, HasNet):
+	id: EntityPathComponent = field(compare=True, hash=True)
+	layer: Layer
+	net: Net
+
+
+@dataclass
+class Via(HasId, HasNet):
+	id: EntityPathComponent = field(compare=True, hash=True)
+	layers: Tuple[Layer, Layer]
+	net: Net
+
+
+@dataclass
+class Graphic(HasId, OnBoard):
+	id: EntityPathComponent = field(compare=True, hash=True)
+	layer: Layer
+
+
+@dataclass(repr=False, eq=False)
 class Project():
 	"""
 	This has grown from a basic schematic relations parser to include board
@@ -190,15 +217,24 @@ class Project():
 	"""
 
 	name: str = field(init=False)
-	sheet_definitions: Dict[str, SheetDefinition] = field(default_factory=dict)
-	sheet_instances: Dict[EntityPath, SheetInstance] = field(default_factory=dict)
-	symbol_definitions: Dict[EntityPathComponent, SymbolDefinition] = field(default_factory=dict)
-	symbol_instances: Dict[EntityPath, SymbolInstance] = field(default_factory=dict)
-	component_definitions: List[ComponentDefinition] = field(default_factory=list)
-	component_instances: Dict[str, ComponentInstance] = field(default_factory=dict)
+	sheet_definitions: Dict[str, SheetDefinition] = field(init=False)
+	sheet_instances: Dict[EntityPath, SheetInstance] = field(init=False)
+	symbol_definitions: Dict[EntityPathComponent, SymbolDefinition] = field(init=False)
+	symbol_instances: Dict[EntityPath, SymbolInstance] = field(init=False)
+	component_definitions: List[ComponentDefinition] = field(init=False)
+	component_instances: Dict[str, ComponentInstance] = field(init=False)
 	root_sheet_instance: SheetInstance = field(init=False)
 	root_sheet_definition: SheetDefinition = field(init=False)
 
 	""" Eventually we will support multiple boards, even if Kicad won't """
 	""" But for now, keep it as is currently required """
-	footprints: Dict[EntityPathComponent, Footprint] = field(default_factory=dict)
+	layers: Dict[BoardLayer, Layer] = field(init=False)
+	nets: Dict[int, Net] = field(init=False)
+	footprints: Dict[EntityPathComponent, Footprint] = field(init=False)
+	# Tracks, vias, zones, arcs
+	# Don't differentiate between them until we need to
+	routes: Dict[EntityPathComponent, Route] = field(init=False)
+	vias: Dict[EntityPathComponent, Via] = field(init=False)
+	# Text, TextBox, Line, Rect Circle, Arc, Poly Bezier
+	# Don't differentiate between them until we need to
+	graphics: Dict[EntityPathComponent, Graphic] = field(init=False)

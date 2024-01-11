@@ -8,9 +8,10 @@ from pcbnew import GetUserUnits, BOARD_ITEM
 from ..utils.kicad_units import UserUnits, SizeUnits
 from ..utils.user_exception import UserException
 
-from ..kicad_v8_loader import EntityPath, SchematicLoader, Schematic
+from ..kicad_v8_model import SchematicLoader, Project, EntityPathComponent
 
-from ..plugin import Plugin
+from ..kicad_v8_native_adapter import Plugin
+from ..kicad_v8_native_adapter import PluginLayoutLoader
 
 from .context import CloneContext, TargetFootprint
 from .service import CloneSelection
@@ -96,7 +97,7 @@ class ClonePlugin(Plugin):
 			sd: a.b.c[1].d.s[0]
 	"""
 
-	schematic: Schematic
+	project: Project
 
 	@staticmethod
 	def filter_selected(items: Iterable[ItemType]) -> List[ItemType]:
@@ -114,11 +115,13 @@ class ClonePlugin(Plugin):
 			board_file = board.GetFileName()
 			logger.info("Board path: %s", board_file)
 			schematic_file = str(Path(board_file).with_suffix(".kicad_sch"))
-			logger.info("Assumed schematic path: %s", schematic_file)
-			schematic = SchematicLoader.load(schematic_file, board)
+			logger.info("Assumed project path: %s", schematic_file)
+			project = Project()
+			SchematicLoader.load(project, schematic_file)
+			PluginLayoutLoader.load(project, board)
 		except Exception as error:
-			raise UserException("Failed to parse board / schematic structure") from error
-		self.schematic = schematic
+			raise UserException("Failed to parse board / project structure") from error
+		self.project = project
 
 		selection = CloneSelection(
 			source_footprints=self.filter_selected(board.Footprints()),
@@ -128,7 +131,7 @@ class ClonePlugin(Plugin):
 		)
 
 		selected_footprints = [
-			schematic.footprints[EntityPath.parse(footprint.GetPath())]
+			project.footprints[EntityPathComponent.parse(footprint.GetFPIDAsString())]
 			for footprint in selection.source_footprints
 		]
 		if not selected_footprints:
@@ -137,12 +140,12 @@ class ClonePlugin(Plugin):
 
 		logger.info("Selected footprints (%d):", len(selected_footprints))
 		for footprint in selected_footprints:
-			logger.info(" * %s", footprint.component_instance.reference)
+			logger.info(" * %s", footprint.component.reference)
 
 		selected_symbol_spaths = set(
-			Spath.create(unit.sheet, schematic.root_sheet_instance)
+			Spath.create(unit.sheet, project.root_sheet_instance)
 			for footprint in selected_footprints
-			for unit in footprint.component_instance.units
+			for unit in footprint.component.units
 		)
 		logger.info("Selected symbol spaths:")
 		for spath in selected_symbol_spaths:
@@ -152,7 +155,7 @@ class ClonePlugin(Plugin):
 		logger.info("Selection prefix spath: %s", selected_symbols_base_spath)
 		assert len(selected_symbols_base_spath) > 0
 
-		source_sheet = selected_symbols_base_spath.resolve_sheet(schematic.root_sheet_instance)
+		source_sheet = selected_symbols_base_spath.resolve_sheet(project.root_sheet_instance)
 
 		selected_symbols_relative_spaths = [
 			path[len(selected_symbols_base_spath):]
@@ -162,10 +165,10 @@ class ClonePlugin(Plugin):
 		for spath in selected_symbols_relative_spaths:
 			logger.info(" * %s", spath)
 
-		reference_symbol_instances = selected_footprints[0].component_instance.units[0].definition.instances
+		reference_symbol_instances = selected_footprints[0].component.units[0].definition.instances
 
 		reference_symbol_instances_spaths = [
-			Spath.create(symbol, schematic.root_sheet_instance)
+			Spath.create(symbol, project.root_sheet_instance)
 			for symbol in reference_symbol_instances
 		]
 
@@ -177,8 +180,8 @@ class ClonePlugin(Plugin):
 		footprint_mapping = {
 			source_footprint: [
 				TargetFootprint(
-					base_sheet=instance_prefix_spath.resolve_sheet(schematic.root_sheet_instance),
-					footprint=target_spath.resolve_symbol(schematic.root_sheet_instance).component.footprint
+					base_sheet=instance_prefix_spath.resolve_sheet(project.root_sheet_instance),
+					footprint=target_spath.resolve_symbol(project.root_sheet_instance).component.footprint
 				)
 				for instance_prefix_spath in instances_prefix_spaths
 				for target_spath in (
@@ -190,26 +193,31 @@ class ClonePlugin(Plugin):
 			for source_footprint in selected_footprints
 			for source_spath in (
 				Spath.create(
-					source_footprint.component_instance.units[0],
-					schematic.root_sheet_instance
+					source_footprint.component.units[0],
+					project.root_sheet_instance
 				),
 			)
 		}
 
 		logger.info("Footprint mappings:")
 		for source, targets in footprint_mapping.items():
-			logger.info(" * %s", source.component_instance.reference)
+			logger.info(" * %s", source.component.reference)
 			for target in targets:
-				logger.info("    - %s", target.footprint.component_instance.reference)
+				logger.info("    - %s", target.footprint.component.reference)
 
 		base_sheets = [
-			instance_prefix_spath.resolve_sheet(schematic.root_sheet_instance)
+			instance_prefix_spath.resolve_sheet(project.root_sheet_instance)
 			for instance_prefix_spath in instances_prefix_spaths
 			if instance_prefix_spath != selected_symbols_base_spath
 		]
 
+		kicad_footprints = {
+			EntityPathComponent.parse(footprint.GetFPIDAsString()): footprint
+			for footprint in board.GetFootprints()
+		}
+
 		selected_footprint_bboxes = [
-			footprint.pcbnew_footprint.GetBoundingBox(True, True)
+			kicad_footprints[footprint.id].GetBoundingBox(True, True)
 			for footprint in selected_footprints
 		]
 
@@ -261,7 +269,7 @@ class ClonePlugin(Plugin):
 		)
 
 		context = CloneContext(
-			schematic=schematic,
+			project=project,
 			selection=selection,
 			settings=settings,
 			selected_footprints=selected_footprints,

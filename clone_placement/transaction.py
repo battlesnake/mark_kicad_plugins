@@ -2,8 +2,9 @@ from typing import final, List, Callable
 from abc import ABC, abstractmethod
 from math import copysign
 
-from pcbnew import EDA_ANGLE, DEGREE_T, BOARD_ITEM, FOOTPRINT
+from pcbnew import EDA_ANGLE, DEGREE_T, BOARD_ITEM, FOOTPRINT, VECTOR2I
 
+from ..geometry import Vector2, Angle
 from ..utils.kicad_units import RotationUnits
 from ..utils.user_exception import UserException
 
@@ -26,17 +27,12 @@ class CloneTransactionOperator(ABC):
 
 	def internal_apply_displacement(self, target_item: BOARD_ITEM) -> None:
 		# Assumes that target item is at same location/angle/side as source item
-		def clamp_angle(angle: float):
-			while angle > 180:
-				angle -= 360
-			while angle < -180:
-				angle += 360
-			return angle
 		source_reference_placement = self.source_reference_placement
 		target_reference_placement = self.target_reference_placement
-		rotation = clamp_angle(target_reference_placement.angle - source_reference_placement.angle)
+		rotation = (target_reference_placement.orientation - source_reference_placement.orientation).wrap()
 		flip = target_reference_placement.flipped != source_reference_placement.flipped
-		target_item.Move(target_reference_placement.position - source_reference_placement.position)
+		displacement = target_reference_placement.position - source_reference_placement.position
+		target_item.Move(VECTOR2I(displacement.x, displacement.y))
 		if flip:
 			target_item.Flip(target_reference_placement.position, False)
 			source_angle = source_reference_placement.angle

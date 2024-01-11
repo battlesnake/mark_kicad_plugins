@@ -81,12 +81,13 @@ class CloneService():
 			source_reference = source_footprints[0]
 		logger.info(
 			"Source reference footprint: %s",
-			source_reference.component_instance.reference,
+			source_reference.component.reference,
 		)
 
-		source_reference_placement = Placement.of(source_reference.pcbnew_footprint)
+		source_reference_placement = Placement.of(source_reference)
 
 		placement_strategy = ClonePlacementStrategy.get(
+			project=context.project,
 			settings=settings.placement,
 			reference=source_reference,
 			targets=[
@@ -104,7 +105,7 @@ class CloneService():
 		BoredUserEntertainer.message("Planning clone operation")
 
 		for target_reference, target_reference_placement in placement_strategy:
-			logger.info("Planning clone of subcircuit around %s", target_reference.component_instance.reference)
+			logger.info("Planning clone of subcircuit around %s", target_reference.component.reference)
 			for source_index, source_footprint in enumerate(source_footprints):
 				target_footprint_mapping = footprint_mapping[source_footprint][source_index]
 				target_footprint = target_footprint_mapping.footprint

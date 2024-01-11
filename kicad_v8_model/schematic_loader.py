@@ -2,8 +2,9 @@ from dataclasses import dataclass
 import logging
 import os
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, TypeVar
+from typing import Callable, Dict, List, Optional
 
+from ..utils.to_dict_strict import to_dict_strict
 from ..utils.common_value import common_value
 from ..utils.multi_map import MultiMap
 
@@ -132,27 +133,14 @@ class SchematicLoader():
 		self.read_component_instances()
 
 	def get_result(self):
-
-		Key = TypeVar("Key")
-		Value = TypeVar("Value")
-
-		def to_dict(items: Sequence[Value], key_func: Callable[[Value], Key]) -> Dict[Key, Value]:
-			result: Dict[Key, Value] = {}
-			for item in items:
-				key = key_func(item)
-				if key in result:
-					raise KeyError("Duplicate key", key, type(key), type(item), repr(result[key]), repr(item))
-				result[key] = item
-			return result
-
 		project = self.project
 		project.name = self.project_name
-		project.sheet_definitions = to_dict(self.sheet_definitions, lambda item: item.filename)
-		project.sheet_instances = to_dict(self.sheet_instances, lambda item: item.path)
-		project.symbol_definitions = to_dict(self.symbol_definitions, lambda item: item.id)
-		project.symbol_instances = to_dict(self.symbol_instances, lambda item: item.path)
+		project.sheet_definitions = to_dict_strict(self.sheet_definitions, lambda item: item.filename)
+		project.sheet_instances = to_dict_strict(self.sheet_instances, lambda item: item.path)
+		project.symbol_definitions = to_dict_strict(self.symbol_definitions, lambda item: item.id)
+		project.symbol_instances = to_dict_strict(self.symbol_instances, lambda item: item.path)
 		project.component_definitions = self.component_definitions
-		project.component_instances = to_dict(self.component_instances, lambda item: item.reference.designator)
+		project.component_instances = to_dict_strict(self.component_instances, lambda item: item.reference.designator)
 		project.root_sheet_definition = self.root_sheet_definition
 		project.root_sheet_instance = self.root_sheet_instance
 
