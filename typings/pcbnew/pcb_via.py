@@ -15,22 +15,22 @@ class PCB_VIA(PCB_TRACK):
     def GetSolderMaskExpansion(self) -> Any:
         ...
 
-    def SetLayerPair(self, aTopLayer, aBottomLayer) -> Any:
+    def SetLayerPair(self, aTopLayer: int, aBottomLayer: int) -> Any:
         ...
 
-    def SetBottomLayer(self, aLayer) -> Any:
+    def SetBottomLayer(self, aLayer: int) -> Any:
         ...
 
-    def SetTopLayer(self, aLayer) -> Any:
+    def SetTopLayer(self, aLayer: int) -> Any:
         ...
 
-    def LayerPair(self, top_layer, bottom_layer) -> Any:
+    def LayerPair(self, top_layer: int, bottom_layer: int) -> Any:
         ...
 
-    def TopLayer(self) -> Any:
+    def TopLayer(self) -> int:
         ...
 
-    def BottomLayer(self) -> Any:
+    def BottomLayer(self) -> int:
         ...
 
     def SanitizeLayers(self) -> Any:

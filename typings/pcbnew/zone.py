@@ -37,7 +37,7 @@ class ZONE(BOARD_CONNECTED_ITEM):
 	def SetLocalClearance(self, aClearance: Any) -> None:
 		...
 
-	def GetFirstLayer(self) -> Any:
+	def GetFirstLayer(self) -> int:
 		...
 
 	def ViewGetLOD(self, aLayer, aView) -> Any:

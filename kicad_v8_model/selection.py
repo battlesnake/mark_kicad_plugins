@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Iterator, List, Optional, Sequence, Set, Union
+from typing import Iterator, List, Optional, Sequence, Set
 
 from .node import Node
 

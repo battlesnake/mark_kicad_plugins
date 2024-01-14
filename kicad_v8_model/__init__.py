@@ -28,6 +28,7 @@ from .entities import (
 	SymbolInstance,
 	Footprint,
 	Route,
+	Via,
 	Graphic,
 )
 from .board import (

@@ -36,40 +36,40 @@ class EDA_ANGLE():
     def AsDegrees(self):
         ...
 
-    def AsTenthsOfADegree(self):
+    def AsTenthsOfADegree(self) -> int:
         ...
 
-    def AsRadians(self):
+    def AsRadians(self) -> float:
         ...
 
-    def IsCardinal(self):
+    def IsCardinal(self) -> float:
         ...
 
-    def IsCardinal90(self):
+    def IsCardinal90(self) -> bool:
         ...
 
-    def IsZero(self):
+    def IsZero(self) -> bool:
         ...
 
-    def IsHorizontal(self):
+    def IsHorizontal(self) -> bool:
         ...
 
-    def IsVertical(self):
+    def IsVertical(self) -> bool:
         ...
 
-    def IsParallelTo(self, aAngle: "EDA_ANGLE"):
+    def IsParallelTo(self, aAngle: "EDA_ANGLE") -> bool:
         ...
 
-    def Invert(self):
+    def Invert(self) -> "EDA_ANGLE":
         ...
 
-    def Sin(self):
+    def Sin(self) -> float:
         ...
 
-    def Cos(self):
+    def Cos(self) -> float:
         ...
 
-    def Tan(self):
+    def Tan(self) -> float:
         ...
 
     def Normalize(self):
@@ -136,3 +136,6 @@ class EDA_ANGLE():
     m_Angle180: "EDA_ANGLE"
     m_Angle270: "EDA_ANGLE"
     m_Angle360: "EDA_ANGLE"
+
+
+from .vector2i import VECTOR2I

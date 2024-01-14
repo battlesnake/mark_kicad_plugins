@@ -1,32 +1,33 @@
 from typing import Any
 from .board_item import BOARD_ITEM
+from .netinfo import NETINFO_ITEM
 
 
 # TODO
 class BOARD_CONNECTED_ITEM(BOARD_ITEM):
 
-    def GetNet(self) -> Any:
+    def GetNet(self) -> NETINFO_ITEM:
         ...
 
-    def SetNet(self, aNetInfo) -> Any:
+    def SetNet(self, aNetInfo: NETINFO_ITEM) -> Any:
         ...
 
-    def GetNetCode(self) -> Any:
+    def GetNetCode(self) -> int:
         ...
 
-    def SetNetCode(self, *args) -> Any:
+    def SetNetCode(self, code: int) -> Any:
         ...
 
-    def GetNetname(self) -> Any:
+    def GetNetname(self) -> str:
         ...
 
     def GetNetnameMsg(self) -> Any:
         ...
 
-    def GetShortNetname(self) -> Any:
+    def GetShortNetname(self) -> str:
         ...
 
-    def GetUnescapedShortNetname(self) -> Any:
+    def GetUnescapedShortNetname(self) -> str:
         ...
 
     def GetOwnClearance(self, aLayer, aSource=None) -> Any:

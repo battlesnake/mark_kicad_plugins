@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Sequence
+from typing import Any, Iterable, Sequence, Union
 
 from .kiid import KIID
 from .footprint import FOOTPRINT
@@ -6,6 +6,7 @@ from .pcb_track import PCB_TRACK
 from .pcb_group import PCB_GROUP
 from .board_item_container import BOARD_ITEM_CONTAINER
 from .board_item import BOARD_ITEM
+from .netinfo import NETINFO_ITEM, NETINFO_LIST
 
 
 # TODO
@@ -224,22 +225,22 @@ class BOARD(BOARD_ITEM_CONTAINER):
     def ConvertBrdLayerToPolygonalContours(self, aLayer, aOutlines) -> Any:
         ...
 
-    def GetLayerID(self, aLayerName: str) -> Any:
+    def GetLayerID(self, aLayerName: str) -> int:
         ...
 
-    def GetLayerName(self, aLayer) -> str:
+    def GetLayerName(self, aLayer: int) -> str:
         ...
 
-    def SetLayerName(self, aLayer, aLayerName: str) -> Any:
+    def SetLayerName(self, aLayer: int, aLayerName: str) -> Any:
         ...
 
-    def SetLayerDescr(self, aIndex, aLayer) -> Any:
+    def SetLayerDescr(self, aIndex: int, aLayer) -> Any:
         ...
 
-    def GetLayerType(self, aLayer) -> Any:
+    def GetLayerType(self, aLayer: int) -> int:
         ...
 
-    def SetLayerType(self, aLayer, aLayerType) -> Any:
+    def SetLayerType(self, aLayer: int, aLayerType: int) -> Any:
         ...
 
     def GetNodesCount(self, aNet=-1) -> Any:
@@ -251,13 +252,13 @@ class BOARD(BOARD_ITEM_CONTAINER):
     def BuildListOfNets(self) -> Any:
         ...
 
-    def FindNet(self, *args) -> Any:
+    def FindNet(self, number_or_name: Union[int, str]) -> NETINFO_ITEM:
         ...
 
-    def GetNetInfo(self, *args) -> Any:
+    def GetNetInfo(self) -> NETINFO_LIST:
         ...
 
-    def GetNetCount(self) -> Any:
+    def GetNetCount(self) -> int:
         ...
 
     def ComputeBoundingBox(self, aBoardEdgesOnly=False) -> Any:
@@ -356,7 +357,7 @@ class BOARD(BOARD_ITEM_CONTAINER):
     def GetDrawings(self) -> Any:
         ...
 
-    def GetTracks(self) -> Any:
+    def GetTracks(self) -> Sequence[PCB_TRACK]:
         ...
 
     def Save(self, filename) -> Any:
