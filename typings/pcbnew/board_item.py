@@ -3,6 +3,9 @@ from .vector2i import VECTOR2I
 from .eda_item import EDA_ITEM
 
 
+PCB_LAYER_ID = int
+
+
 class BOARD_ITEM(EDA_ITEM):
 
     def SetParentGroup(self, aGroup: "PCB_GROUP") -> None:

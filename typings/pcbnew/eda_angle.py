@@ -90,25 +90,25 @@ class EDA_ANGLE():
     def KeepUpright(self):
         ...
 
-    def __iadd__(self, aAngle: "EDA_ANGLE"):
+    def __iadd__(self, aAngle: "EDA_ANGLE") -> "EDA_ANGLE":
         ...
 
-    def __isub__(self, aAngle: "EDA_ANGLE"):
+    def __isub__(self, aAngle: "EDA_ANGLE") -> "EDA_ANGLE":
         ...
 
-    def __add__(self, other: "EDA_ANGLE"):
+    def __add__(self, other: "EDA_ANGLE") -> "EDA_ANGLE":
         ...
 
-    def __sub__(self, other: "EDA_ANGLE"):
+    def __sub__(self, other: "EDA_ANGLE") -> "EDA_ANGLE":
         ...
 
-    def __mul__(self, other: "EDA_ANGLE"):
+    def __mul__(self, other: "EDA_ANGLE" | float | int) -> "EDA_ANGLE":
         ...
 
-    def __rmul__(self, other: "EDA_ANGLE"):
+    def __rmul__(self, other: "EDA_ANGLE" | float | int) -> "EDA_ANGLE":
         ...
 
-    def __truediv__(self, other: "EDA_ANGLE"):
+    def __truediv__(self, other: "EDA_ANGLE" | float | int) -> "EDA_ANGLE":
         ...
 
     @staticmethod

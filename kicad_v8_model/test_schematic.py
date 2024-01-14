@@ -7,7 +7,6 @@ from .layout_loader import LayoutLoader
 
 
 def run():
-    import yaml
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger(__name__)
     project_file = Path("/home/mark/projects/big-audio-interface/kicad/main.kicad_pro")
@@ -17,4 +16,5 @@ def run():
     project = Project()
     SchematicLoader.load(project, str(schematic_file))
     LayoutLoader.load(project, str(layout_file))
-    print(yaml.dump(project))
+    # import yaml
+    # print(yaml.dump(project))

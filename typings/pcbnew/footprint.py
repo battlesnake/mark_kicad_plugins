@@ -1,6 +1,7 @@
 from typing import Any, Mapping
 
 from .kiid import KIID_PATH
+from .eda_angle import EDA_ANGLE
 from .box2i import BOX2I
 from .board_item_container import BOARD_ITEM_CONTAINER
 
@@ -47,10 +48,10 @@ class FOOTPRINT(BOARD_ITEM_CONTAINER):
 	def Models(self, *args) -> Any:
 		...
 
-	def SetOrientation(self, aNewAngle) -> Any:
+	def SetOrientation(self, aNewAngle: EDA_ANGLE) -> Any:
 		...
 
-	def GetOrientation(self) -> Any:
+	def GetOrientation(self) -> EDA_ANGLE:
 		...
 
 	def SetLayerAndFlip(self, aLayer) -> Any:

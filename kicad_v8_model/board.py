@@ -89,6 +89,10 @@ class BoardLayer(Enum):
 			return "F." + parts[1]
 		raise ValueError("Opposite layer is not well-defined")
 
+	@property
+	def index(self):
+		return self.id_map().index(self)
+
 	@staticmethod
 	def id_map() -> Sequence["BoardLayer"]:
 		return [

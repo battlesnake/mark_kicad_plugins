@@ -1,28 +1,30 @@
-from dataclasses import field
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Sequence
-
-from layout_transaction.command import Command
 
 
 class TransactionState(Enum):
-	"""
-	Terminals:
-		RF
-	Transitions:
-		NC -> C
-		C -> NC
-		NC -> CF
-		CF -> NC
-		C -> RF
-	"""
 	NOT_COMMITTED = "not committed"
+	COMMITTING = "committing"
 	COMMITTED = "committed"
 	COMMIT_FAILED = "commit failed"
+	ROLLING_BACK = "rolling back"
 	ROLLBACK_FAILED = "rollback failed"
 
 
+@dataclass
+class TransactionProgress():
+	done: int
+	total: int
+	message: str = field(default="")
 
-class Transaction():
-	script: Sequence[Command]
-	state: TransactionState = field(default=TransactionState.NOT_COMMITTED, init=False)
+
+class TransactionObserver(ABC):
+
+	@abstractmethod
+	def state_changed(self, state: TransactionState):
+		...
+
+	@abstractmethod
+	def progress_changed(self, progress: TransactionProgress):
+		...
