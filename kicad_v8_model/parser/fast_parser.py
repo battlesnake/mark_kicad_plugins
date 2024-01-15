@@ -9,7 +9,7 @@ import re
 from ..node import Node
 from ..selection import Selection
 
-from .parser_observer import ParserObserver
+from .parser_observer import ParserObserver, NullParserObserver
 
 
 logger = logging.getLogger(__name__)
@@ -33,11 +33,10 @@ class FastParserState():
 	text: str
 	position: int
 
-	def read(self, pattern: re.Pattern[str], peek: bool = False):
+	def read(self, pattern: re.Pattern[str]):
 		match = pattern.match(self.text, self.position)
 		if match:
-			if not peek:
-				self.position = match.end()
+			self.position = match.end()
 		return match
 
 	def syntax_error(self):
@@ -55,7 +54,7 @@ class FastParserState():
 
 class FastParser():
 
-	def __init__(self, observer: ParserObserver):
+	def __init__(self, observer: ParserObserver = NullParserObserver()):
 		self.observer = observer
 
 	def dequote(self, value: str):

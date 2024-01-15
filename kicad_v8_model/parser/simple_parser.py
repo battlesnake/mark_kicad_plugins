@@ -19,7 +19,7 @@ from ..selection import Selection
 
 from .string_iterator import StringIterator
 
-from .parser_observer import ParserObserver
+from .parser_observer import ParserObserver, NullParserObserver
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class SimpleParser():
 	QUOTE_ESCAPE = "\\"
 	UNQUOTED_VALUE = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-."
 
-	def __init__(self, observer: ParserObserver):
+	def __init__(self, observer: ParserObserver = NullParserObserver()):
 		self.observer = observer
 
 	def parse_unquoted(self, it: StringIterator) -> str:
