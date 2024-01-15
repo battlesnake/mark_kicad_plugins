@@ -19,6 +19,8 @@ from ..selection import Selection
 
 from .string_iterator import StringIterator
 
+from .parser_observer import ParserObserver
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +35,8 @@ class SimpleParser():
 	QUOTE_ESCAPE = "\\"
 	UNQUOTED_VALUE = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-."
 
-	def __init__(self):
-		pass
+	def __init__(self, observer: ParserObserver):
+		self.observer = observer
 
 	def parse_unquoted(self, it: StringIterator) -> str:
 		begin = it.mark()
@@ -82,9 +84,11 @@ class SimpleParser():
 				values.append(self.parse_value(it))
 			it.skip(self.WHITESPACE)
 		it.next()
+		self.observer.progress(it.it, len(it.string))
 		return Node(key=key, values=tuple(values), children=tuple(children))
 
 	def parse(self, text: str, root_values: Optional[Sequence[str]] = None) -> Selection:
+		self.observer.progress(0, len(text))
 		try:
 			it = StringIterator(text, 0, len(text))
 			it.skip(self.WHITESPACE)

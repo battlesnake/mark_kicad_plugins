@@ -9,6 +9,8 @@ import re
 from ..node import Node
 from ..selection import Selection
 
+from .parser_observer import ParserObserver
+
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +55,8 @@ class FastParserState():
 
 class FastParser():
 
-	def __init__(self):
-		pass
+	def __init__(self, observer: ParserObserver):
+		self.observer = observer
 
 	def dequote(self, value: str):
 		assert value[0] == "\""
@@ -106,6 +108,7 @@ class FastParser():
 				break
 			else:
 				children.append(self.parse_node(state))
+		self.observer.progress(state.position, len(state.text))
 		return Node(
 			key=key,
 			values=values,
@@ -114,11 +117,15 @@ class FastParser():
 
 	def parse(self, text: str, root_values: Optional[Sequence[str]] = None) -> Selection:
 		state = FastParserState(text, 0)
+		self.observer.progress(0, len(text))
 		root = Node(
 			key="(root)",
 			values=tuple([] if root_values is None else root_values),
 			children=tuple([self.parse_node(state)]),
 		)
+		state.read(NODE_SPACE)
+		if state.position != len(text):
+			raise state.syntax_error()
 		return Selection(nodes=[root])
 
 	def parse_file(self, path: str) -> Selection:
