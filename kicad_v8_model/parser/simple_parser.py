@@ -18,14 +18,14 @@ from ..node import Node
 from ..selection import Selection
 
 from .string_iterator import StringIterator
-
+from .parser import Parser
 from .parser_observer import ParserObserver, NullParserObserver
 
 
 logger = logging.getLogger(__name__)
 
 
-class SimpleParser():
+class SimpleParser(Parser):
 
 	WHITESPACE = " \t\n\r"
 	EXPR_BEGIN = "("

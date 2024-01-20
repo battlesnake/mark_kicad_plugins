@@ -9,6 +9,7 @@ import re
 from ..node import Node
 from ..selection import Selection
 
+from .parser import Parser
 from .parser_observer import ParserObserver, NullParserObserver
 
 
@@ -52,7 +53,7 @@ class FastParserState():
 		return ValueError(f"Syntax error at {self.position}:\n{caret_line}\n{caret_str}")
 
 
-class FastParser():
+class FastParser(Parser):
 
 	def __init__(self, observer: ParserObserver = NullParserObserver()):
 		self.observer = observer

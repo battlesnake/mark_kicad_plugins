@@ -1,12 +1,12 @@
 import logging
-from typing import Dict, List
+from typing import Dict, List, Type
 
 from ..utils.to_dict_strict import to_dict_strict
 
 from .angle import Angle
 from .vector2 import Vector2
 
-from .parser import Parser
+from .parser import Parser, FastParser
 from .entities import Footprint, Graphic, Project, Route, Via
 from .entity_path import EntityPath, EntityPathComponent
 from .entity_traits import Net
@@ -47,6 +47,8 @@ class BaseLayoutLoader():
 
 class LayoutLoader(BaseLayoutLoader):
 
+	parser_class: Type[Parser] = FastParser
+
 	@staticmethod
 	def load(project: Project, filename: str):
 		loader = LayoutLoader(project, filename)
@@ -54,7 +56,7 @@ class LayoutLoader(BaseLayoutLoader):
 
 	def __init__(self, project: Project, filename: str):
 		super().__init__(project)
-		pcb_node = Parser().parse_file(filename).kicad_pcb
+		pcb_node = self.parser_class().parse_file(filename).kicad_pcb
 		self.read_nets(pcb_node.net)
 		self.read_layers(pcb_node.layers)
 		self.read_footprints(pcb_node.footprint)

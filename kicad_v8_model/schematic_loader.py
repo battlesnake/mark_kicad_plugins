@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import logging
 import os
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Type
 
 from ..utils.to_dict_strict import to_dict_strict
 from ..utils.common_value import common_value
@@ -23,7 +23,7 @@ from .entities import (
 from .entity_path import EntityPath, EntityPathComponent
 from .node import Node
 from .selection import Selection
-from .parser import Parser
+from .parser import Parser, FastParser
 
 
 logger = logging.getLogger(__name__)
@@ -78,6 +78,8 @@ class ComponentInstanceMetadata():
 
 
 class SchematicLoader():
+	parser_class: Type[Parser] = FastParser
+
 	project: Project
 	filename: str
 	project_name: str
@@ -109,7 +111,7 @@ class SchematicLoader():
 	def __init__(self, project: Project, filename: str, sheet_loader: Optional[Callable[[str], Selection]] = None):
 		self.project = project
 		if sheet_loader is None:
-			sheet_loader = Parser().parse_file
+			sheet_loader = self.parser_class().parse_file
 		self.filename = os.path.join(os.path.curdir, filename)
 		self.project_name = Path(filename).stem
 		self.sheet_loader = sheet_loader
