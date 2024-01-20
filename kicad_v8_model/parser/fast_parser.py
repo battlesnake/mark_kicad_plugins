@@ -20,31 +20,31 @@ OPEN = r"\("
 CLOSE = r"\)"
 TOKEN = r"""[a-z0-9_]+"""
 UNQUOTED_VALUE = r"""[^\s"\\()]+"""
-QUOTED_VALUE = r'''"([^"\r\n\\]|\\[\\"rnt]|\\x[0-9a-fA-F][0-9a-fA-F]|\\[0-7][0-7][0-7])*"'''
+QUOTED_VALUE = r'''"(?:[^"\r\n\\]|\\[\\"rnt]|\\x[0-9a-fA-F][0-9a-fA-F]|\\[0-7][0-7][0-7])*"'''
 SPACE = r"\s+"
 SPACE_OPT = r"\s*"
 
 NODE_START = re.compile(
 	f"{SPACE_OPT}" +
 	f"{OPEN}" +
-	f"(?P<token>{TOKEN})" +
-	f"({SPACE}" + (
-		f"((?P<unquoted1>{UNQUOTED_VALUE})|(?P<quoted1>{QUOTED_VALUE}))" +
-		f"({SPACE}" + (
-			f"((?P<unquoted2>{UNQUOTED_VALUE})|(?P<quoted2>{QUOTED_VALUE}))" +
-			f"({SPACE}" + (
-				f"((?P<unquoted3>{UNQUOTED_VALUE})|(?P<quoted3>{QUOTED_VALUE}))"
-				f"({SPACE}" + (
-					f"((?P<unquoted4>{UNQUOTED_VALUE})|(?P<quoted4>{QUOTED_VALUE}))"
+	f"({TOKEN})" +
+	f"(?:{SPACE}" + (
+		f"(?:({UNQUOTED_VALUE})|({QUOTED_VALUE}))" +
+		f"(?:{SPACE}" + (
+			f"(?:({UNQUOTED_VALUE})|({QUOTED_VALUE}))" +
+			f"(?:{SPACE}" + (
+				f"(?:({UNQUOTED_VALUE})|({QUOTED_VALUE}))"
+				f"(?:{SPACE}" + (
+					f"(?:({UNQUOTED_VALUE})|({QUOTED_VALUE}))"
 				) + ")?"
 			) + ")?"
 		) + ")?"
 	) + ")?" +
-	f"({SPACE_OPT}(?P<close>{CLOSE}))?"
+	f"(?:{SPACE_OPT}({CLOSE}))?"
 )
 NODE_ATTR = re.compile(
 	f"{SPACE}" +
-	f"((?P<unquoted>{UNQUOTED_VALUE})|(?P<quoted>{QUOTED_VALUE}))"
+	f"(?:({UNQUOTED_VALUE})|({QUOTED_VALUE}))"
 )
 NODE_CLOSE = re.compile(
 	f"{SPACE_OPT}" +
@@ -52,7 +52,10 @@ NODE_CLOSE = re.compile(
 )
 NODE_SPACE = re.compile(SPACE)
 
-STR_ESCAPES = re.compile(r"""\\((?P<basic>[\\"rnt\\])|x(?P<hex>[0-9a-fA-F][0-9a-fA-F])|(?P<oct>[0-7][0-7][0-7]))""")
+ESCAPE_BASIC = r"""([\\"rnt\\])"""
+ESCAPE_HEX = r"""x([0-9a-fA-F][0-9a-fA-F])"""
+ESCAPE_OCT = r"""([0-7][0-7][0-7])"""
+STR_ESCAPES = re.compile(r"\\(?:{ESCAPE_BASIC}|{ESCAPE_HEX}|{ESCAPE_OCT})")
 
 
 @dataclass
@@ -98,7 +101,7 @@ class FastParser(Parser):
 		result: List[str] = []
 		while (match := STR_ESCAPES.search(value, position, end)) is not None:
 			result.append(value[position:match.start()])
-			if (esc := match.group("basic")) is not None:
+			if (esc := match.group(1)) is not None:  # escaped/special char
 				if esc == r"\\":
 					result.append("\\")
 				elif esc == r'"':
@@ -111,9 +114,9 @@ class FastParser(Parser):
 					result.append("\t")
 				else:
 					raise Exception()
-			elif (esc := match.group("hex")) is not None:
+			elif (esc := match.group(2)) is not None:  # hexadecimal charcode
 				result.append(chr(int(esc, 16)))
-			elif (esc := match.group("oct")) is not None:
+			elif (esc := match.group(3)) is not None:  # octal charcode
 				result.append(chr(int(esc, 8)))
 			else:
 				raise Exception()
@@ -124,36 +127,35 @@ class FastParser(Parser):
 	def parse_node(self, state: FastParserState) -> Node:
 		if (match := state.read(NODE_START)) is None:
 			raise state.syntax_error()
-		key: str = match.group("token")
+		key: str = match.group(1)
 		values: List[str] = []
 		children: List[Node] = []
-		# Optimisation to speed up parsing of node with 0-3/4+ unquoted
-		# attributes, by parsing the first 0-2 attributes and the closing
+		# Optimisation by parsing the first 0-3 attributes and the closing
 		# bracket (if <=3 attributes) in the same match that we validate the
-		# opening and read the token
-		if (unquoted := match.group("unquoted1")):
+		# opening bracket and read the token name
+		if (unquoted := match.group(2)):
 			values.append(unquoted)
-		elif (quoted := match.group("quoted1")):
+		elif (quoted := match.group(3)):
 			values.append(self.dequote(quoted))
-		if (unquoted := match.group("unquoted2")):
+		if (unquoted := match.group(4)):
 			values.append(unquoted)
-		elif (quoted := match.group("quoted2")):
+		elif (quoted := match.group(5)):
 			values.append(self.dequote(quoted))
-		if (unquoted := match.group("unquoted3")):
+		if (unquoted := match.group(6)):
 			values.append(unquoted)
-		elif (quoted := match.group("quoted3")):
+		elif (quoted := match.group(7)):
 			values.append(self.dequote(quoted))
-		if (unquoted := match.group("unquoted4")):
+		if (unquoted := match.group(8)):
 			values.append(unquoted)
-		elif (quoted := match.group("quoted4")):
+		elif (quoted := match.group(9)):
 			values.append(self.dequote(quoted))
-		closed = match.group("close") is not None
-		# End optimisation
+		closed = match.group(10) is not None
+		# End optimisation, read extra attributes / children / closing
 		while not closed:
 			if (match := state.read(NODE_ATTR)) is not None:
-				if (unquoted := match.group("unquoted")) is not None:
+				if (unquoted := match.group(1)) is not None:
 					values.append(unquoted)
-				elif (quoted := match.group("quoted")) is not None:
+				elif (quoted := match.group(2)) is not None:
 					values.append(self.dequote(quoted))
 			elif state.read(NODE_CLOSE) is not None:
 				closed = True
