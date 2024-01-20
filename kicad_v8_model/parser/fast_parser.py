@@ -22,7 +22,6 @@ QUOTED_VALUE = r'''"([^"\r\n\\]|\\[\\"rnt]|\\x[0-9a-fA-F][0-9a-fA-F]|\\[0-7][0-7
 
 NODE_START = re.compile(f"\\((?P<token>{TOKEN})")
 NODE_ATTR = re.compile(f"((?P<unquoted>{UNQUOTED_VALUE})|(?P<quoted>{QUOTED_VALUE}))")
-NODE_OPEN = re.compile(r"\(")
 NODE_CLOSE = re.compile(r"\)")
 NODE_SPACE = re.compile(r"\s+")
 
