@@ -48,38 +48,39 @@ def run():
     # Profile fast parser
     project = Project()
     profileit(
-        "fast parser",
+        "fast parser: schematic",
         10,
         lambda: SchematicLoader.load(project, str(schematic_file)),
     )
 
     # Profile layout loader with fast parser
     profileit(
-        "layout",
+        "fast parser: layout",
         10,
         lambda: LayoutLoader.load(project, str(layout_file)),
     )
 
     # Time simple parser
-    if False:
-        project = Project()
-        SchematicLoader.parser_class = parser.SimpleParser
-        timeit(
-            "simple parser",
-            lambda: SchematicLoader.load(project, str(schematic_file)),
-        )
+    project = Project()
+    SchematicLoader.parser_class = parser.SimpleParser
+    timeit(
+        "simple parser: schematic",
+        lambda: SchematicLoader.load(project, str(schematic_file)),
+    )
+    timeit(
+        "simple parser: layout",
+        lambda: LayoutLoader.load(project, str(layout_file)),
+    )
 
     # Time fast parser
     project = Project()
     SchematicLoader.parser_class = parser.FastParser
     timeit(
-        "fast parser",
+        "fast parser: schematic",
         lambda: SchematicLoader.load(project, str(schematic_file)),
     )
-
-    # Time layoud loading (with fast parser)
     timeit(
-        "layout",
+        "fast parser: layout",
         lambda: LayoutLoader.load(project, str(layout_file)),
     )
 
