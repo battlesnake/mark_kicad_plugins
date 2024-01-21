@@ -4,6 +4,7 @@ import time
 from typing import Callable
 import cProfile
 import pstats
+import pprofile
 
 from .entities import Project
 from .schematic_loader import SchematicLoader
@@ -15,22 +16,37 @@ def now():
     return time.clock_gettime(time.CLOCK_MONOTONIC)
 
 
-def timeit(name: str, op: Callable[[], None]) -> None:
+def time_execution(name: str, op: Callable[[], None]) -> None:
     t0 = now()
     op()
     t1 = now()
     dt = t1 - t0
+    print("")
     print(f"bench: {name}, time: {dt:.2f}s")
+    print("")
 
 
-def profileit(name: str, lines: int, op: Callable[[], None]) -> None:
+def profile_calls(name: str, op: Callable[[], None], lines: int = 6) -> None:
     profiler = cProfile.Profile()
     profiler.enable()
     op()
     profiler.disable()
     stats = pstats.Stats(profiler)
     stats = stats.sort_stats('tottime')
+    print("")
+    print(f"profile: {name}")
     stats.print_stats(lines)
+    print("")
+
+
+def profile_lines(name: str, op: Callable[[], None]) -> None:
+    profiler = pprofile.Profile()
+    with profiler():
+        op()
+    print("")
+    print(f"profile: {name}")
+    profiler.print_stats()
+    print("")
 
 
 def run():
@@ -47,27 +63,23 @@ def run():
 
     # Profile fast parser
     project = Project()
-    profileit(
+    profile_calls(
         "fast parser: schematic",
-        10,
         lambda: SchematicLoader.load(project, str(schematic_file)),
     )
-
-    # Profile layout loader with fast parser
-    profileit(
+    profile_calls(
         "fast parser: layout",
-        10,
         lambda: LayoutLoader.load(project, str(layout_file)),
     )
 
     # Time simple parser
     project = Project()
     SchematicLoader.parser_class = parser.SimpleParser
-    timeit(
+    time_execution(
         "simple parser: schematic",
         lambda: SchematicLoader.load(project, str(schematic_file)),
     )
-    timeit(
+    time_execution(
         "simple parser: layout",
         lambda: LayoutLoader.load(project, str(layout_file)),
     )
@@ -75,11 +87,11 @@ def run():
     # Time fast parser
     project = Project()
     SchematicLoader.parser_class = parser.FastParser
-    timeit(
+    time_execution(
         "fast parser: schematic",
         lambda: SchematicLoader.load(project, str(schematic_file)),
     )
-    timeit(
+    time_execution(
         "fast parser: layout",
         lambda: LayoutLoader.load(project, str(layout_file)),
     )
