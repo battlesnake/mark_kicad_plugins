@@ -30,36 +30,40 @@ class Angle():
 	def from_radians(value: float):
 		return Angle(value=value, unit=AngleUnit.RADIANS)
 
+	@staticmethod
+	def from_fraction(value: float, unit: AngleUnit = AngleUnit.DEGREES):
+		return Angle(value=unit.value.circle * value, unit=unit)
+
 	def to_unit(self, unit: AngleUnit):
 		if unit == self.unit:
-			return self.value
+			return self
 		else:
-			return self.value * self.unit.value.radians / unit.value.radians
+			return Angle(self.value * self.unit.value.radians / unit.value.radians, unit=unit)
 
 	def wrap(self):
 		circle = self.unit.value.circle
 		value = self.value % circle
 		if value < 0:
 			value += circle
-		return value
+		return Angle(value=value, unit=self.unit)
 
 	@property
 	def degrees(self):
-		return self.to_unit(AngleUnit.DEGREES)
+		return self.to_unit(AngleUnit.DEGREES).value
 
 	@property
 	def radians(self):
-		return self.to_unit(AngleUnit.RADIANS)
+		return self.to_unit(AngleUnit.RADIANS).value
 
 	def __add__(self, other: "Angle"):
 		return Angle(
-			value=self.value + other.to_unit(self.unit),
+			value=self.value + other.to_unit(self.unit).value,
 			unit=self.unit,
 		)
 
 	def __sub__(self, other: "Angle"):
 		return Angle(
-			value=self.value - other.to_unit(self.unit),
+			value=self.value - other.to_unit(self.unit).value,
 			unit=self.unit,
 		)
 

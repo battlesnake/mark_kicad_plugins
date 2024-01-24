@@ -2,8 +2,7 @@ from functools import reduce
 from typing import final, Sequence, Iterator, Tuple, Callable, Dict, List
 from abc import ABC, abstractmethod
 
-from ..geometry import Vector2
-from ..kicad_v8_model import Footprint, EntityPath, Project
+from ..kicad_v8_model import Footprint, EntityPath, Project, Vector2
 
 from .placement import Placement
 from .placement_settings import ClonePlacementGridFlow, ClonePlacementGridSort, ClonePlacementGridStrategySettings, ClonePlacementRelativeStrategySettings, ClonePlacementStrategyType, ClonePlacementSettings

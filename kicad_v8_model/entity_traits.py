@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Dict, Protocol, runtime_checkable
+from typing import Dict, List, Protocol, runtime_checkable
 
+from .angle import Angle
+from .vector2 import Vector2
 from .board import Layer
 from .entity_path import EntityPath, EntityPathComponent
 
@@ -21,8 +23,42 @@ class HasPath(Protocol):
 
 
 @runtime_checkable
+class HasPosition(Protocol):
+	position: Vector2
+
+
+@runtime_checkable
+class HasLine(Protocol):
+	start: Vector2
+	end: Vector2
+
+
+@runtime_checkable
+class HasArc(Protocol):
+	start: Vector2
+	mid: Vector2
+	end: Vector2
+
+
+@runtime_checkable
+class HasPolygon(Protocol):
+	points: List[Vector2]
+
+
+@runtime_checkable
+class HasOrientation(Protocol):
+	orientation: Angle
+
+
+@runtime_checkable
+class HasLayer(Protocol):
+	layer: Layer
+
+
+@runtime_checkable
 class OnBoard(Protocol):
 	layer: Layer
+	position: Vector2
 
 
 @runtime_checkable

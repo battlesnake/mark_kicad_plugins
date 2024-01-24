@@ -14,6 +14,7 @@ from .pcb_group import PCB_GROUP
 from .board_connected_item import BOARD_CONNECTED_ITEM
 from .pcb_track import PCB_TRACK
 from .pcb_via import PCB_VIA
+from .pcb_arc import PCB_ARC
 from .zone import ZONE
 from .board_item_container import BOARD_ITEM_CONTAINER
 from .board import BOARD

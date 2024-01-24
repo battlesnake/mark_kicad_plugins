@@ -3,7 +3,6 @@ from typing import Any
 from .pcb_track import PCB_TRACK
 
 
-# TODO
 class PCB_VIA(PCB_TRACK):
 
     def GetViaType(self) -> Any:

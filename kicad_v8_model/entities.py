@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .board import BoardLayer, Layer
 from .entity_path import EntityPath, EntityPathComponent
-from .entity_traits import HasProperties, HasId, HasPath, Net, OnBoard, HasNet
+from .entity_traits import HasArc, HasLine, HasPolygon, HasProperties, HasId, HasPath, Net, HasNet, HasLayer, HasPosition, HasOrientation
 from .angle import Angle
 from .vector2 import Vector2
 
@@ -137,7 +137,7 @@ class SymbolInstance(HasPath):
 
 
 @dataclass
-class Footprint(HasId, HasProperties, OnBoard):
+class Footprint(HasId, HasProperties, HasLayer, HasPosition, HasOrientation):
 	id: EntityPathComponent = field(compare=True, hash=True)
 	properties: Dict[str, str]
 	layer: Layer
@@ -190,23 +190,41 @@ class ComponentInstance():
 
 
 @dataclass
-class Route(HasId, OnBoard, HasNet):
+class StraightRoute(HasId, HasPosition, HasLayer, HasNet, HasLine):
 	id: EntityPathComponent = field(compare=True, hash=True)
+	position: Vector2
+	start: Vector2
+	end: Vector2
 	layer: Layer
 	net: Net
 
 
 @dataclass
-class Via(HasId, HasNet):
+class ArcRoute(HasId, HasPosition, HasLayer, HasNet, HasArc):
 	id: EntityPathComponent = field(compare=True, hash=True)
+	position: Vector2
+	start: Vector2
+	mid: Vector2
+	end: Vector2
+	layer: Layer
+	net: Net
+
+
+@dataclass
+class PolygonRoute(HasId, HasPosition, HasLayer, HasNet, HasPolygon):
+	id: EntityPathComponent = field(compare=True, hash=True)
+	position: Vector2
+	layer: Layer
+	points: List[Vector2]
+	net: Net
+
+
+@dataclass
+class Via(HasId, HasPosition, HasNet):
+	id: EntityPathComponent = field(compare=True, hash=True)
+	position: Vector2
 	layers: Tuple[Layer, Layer]
 	net: Net
-
-
-@dataclass
-class Graphic(HasId, OnBoard):
-	id: EntityPathComponent = field(compare=True, hash=True)
-	layer: Layer
 
 
 @dataclass(repr=False, eq=False)
@@ -233,8 +251,7 @@ class Project():
 	footprints: Dict[EntityPathComponent, Footprint] = field(init=False)
 	# Tracks, vias, zones, arcs
 	# Don't differentiate between them until we need to
-	routes: Dict[EntityPathComponent, Route] = field(init=False)
+	tracks: Dict[EntityPathComponent, StraightRoute] = field(init=False)
+	track_arcs: Dict[EntityPathComponent, ArcRoute] = field(init=False)
+	zones: Dict[EntityPathComponent, PolygonRoute] = field(init=False)
 	vias: Dict[EntityPathComponent, Via] = field(init=False)
-	# Text, TextBox, Line, Rect Circle, Arc, Poly Bezier
-	# Don't differentiate between them until we need to
-	graphics: Dict[EntityPathComponent, Graphic] = field(init=False)

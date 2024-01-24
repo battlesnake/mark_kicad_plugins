@@ -19,6 +19,8 @@ from .entity_traits import (
 	HasNet,
 	OnBoard,
 	Net,
+	HasPosition,
+	HasLayer,
 )
 from .entities import (
 	Project,
@@ -27,9 +29,10 @@ from .entities import (
 	SheetInstance,
 	SymbolInstance,
 	Footprint,
-	Route,
+	StraightRoute,
+	ArcRoute,
+	PolygonRoute,
 	Via,
-	Graphic,
 )
 from .board import (
 	BoardLayer,

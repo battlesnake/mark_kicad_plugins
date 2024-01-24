@@ -7,7 +7,7 @@ from .angle import Angle
 from .vector2 import Vector2
 
 from .parser import Parser, FastParser
-from .entities import Footprint, Graphic, Project, Route, Via
+from .entities import ArcRoute, Footprint, PolygonRoute, Project, StraightRoute, Via
 from .entity_path import EntityPath, EntityPathComponent
 from .entity_traits import Net
 from .board import BoardLayer, Layer
@@ -22,27 +22,30 @@ class BaseLayoutLoader():
 	layers: Dict[str, Layer]
 	nets: Dict[int, Net]
 	footprints: List[Footprint]
-	routes: List[Route]
+	tracks: List[StraightRoute]
+	track_arcs: List[ArcRoute]
+	zones: List[PolygonRoute]
 	vias: List[Via]
-	graphics: List[Graphic]
 
 	def __init__(self, project: Project):
 		self.project = project
 		self.layers = {}
 		self.nets = {}
 		self.footprints = []
-		self.routes = []
+		self.tracks = []
+		self.track_arcs = []
+		self.zones = []
 		self.vias = []
-		self.graphics = []
 
 	def get_result(self):
 		project = self.project
 		project.layers = to_dict_strict(self.layers.values(), lambda layer: layer.type)
 		project.nets = self.nets
 		project.footprints = to_dict_strict(self.footprints, lambda footprint: footprint.id)
-		project.routes = to_dict_strict(self.routes, lambda route: route.id)
+		project.tracks = to_dict_strict(self.tracks, lambda route: route.id)
+		project.track_arcs = to_dict_strict(self.track_arcs, lambda route: route.id)
+		project.zones = to_dict_strict(self.zones, lambda route: route.id)
 		project.vias = to_dict_strict(self.vias, lambda via: via.id)
-		project.graphics = to_dict_strict(self.graphics, lambda graphic: graphic.id)
 
 
 class LayoutLoader(BaseLayoutLoader):
@@ -60,24 +63,20 @@ class LayoutLoader(BaseLayoutLoader):
 		self.read_nets(pcb_node.net)
 		self.read_layers(pcb_node.layers)
 		self.read_footprints(pcb_node.footprint)
-		self.read_routes(
-			pcb_node.segment +
-			pcb_node.zone +
-			pcb_node.arc
-		)
-		self.read_vias(
-			pcb_node.via
-		)
-		self.read_graphics(
-			pcb_node.gr_text +
-			pcb_node.gr_text_box +
-			pcb_node.gr_line +
-			pcb_node.gr_rect +
-			pcb_node.gr_circle +
-			pcb_node.gr_arc +
-			pcb_node.gr_poly +
-			pcb_node.bezier
-		)
+		self.read_tracks(pcb_node.segment)
+		self.read_track_arcs(pcb_node.arc)
+		self.read_track_zones(pcb_node.zone)
+		self.read_vias(pcb_node.via)
+		# self.read_graphics(
+		# 	pcb_node.gr_text +
+		# 	pcb_node.gr_text_box +
+		# 	pcb_node.gr_line +
+		# 	pcb_node.gr_rect +
+		# 	pcb_node.gr_circle +
+		# 	pcb_node.gr_arc +
+		# 	pcb_node.gr_poly +
+		# 	pcb_node.bezier
+		# )
 		self.get_result()
 
 	def read_nets(self, net_nodes: Selection):
@@ -107,6 +106,18 @@ class LayoutLoader(BaseLayoutLoader):
 			layers.append(layer)
 		self.layers = to_dict_strict(layers, lambda layer: layer.type.value)
 
+	def _vector(self, node: Selection, index: int = 0):
+		x = int(float(node[index]) * 1e6)
+		y = int(float(node[index + 1]) * 1e6)
+		return Vector2(
+			x=x,
+			y=y,
+		)
+
+	def _angle(self, node: Selection, index: int = 2):
+		angle = float(node.value_by_index(index, "0"))
+		return Angle.from_degrees(angle)
+
 	def read_footprints(self, footprint_nodes: Selection):
 		project = self.project
 		component_instances = {
@@ -119,9 +130,8 @@ class LayoutLoader(BaseLayoutLoader):
 			locked = "locked" in footprint_node.values
 			layer_name = footprint_node.layer[0]
 			footprint_id = EntityPathComponent.parse(footprint_node.uuid[0])
-			placement_x = int(float(footprint_node.at[0]) * 1e6)
-			placement_y = int(float(footprint_node.at[1]) * 1e6)
-			placement_angle = float(footprint_node.at.value_by_index(2, "0"))
+			position = self._vector(footprint_node.at)
+			angle = self._angle(footprint_node.at)
 			properties = {
 				property_node[0]: property_node[1]
 				for property_node in footprint_node.property
@@ -137,8 +147,8 @@ class LayoutLoader(BaseLayoutLoader):
 				board_only=board_only,
 				layer=layer,
 				id=footprint_id,
-				position=Vector2(x=placement_x, y=placement_y),
-				orientation=Angle.from_degrees(placement_angle),
+				position=position,
+				orientation=angle,
 				properties=properties,
 				symbol_path=symbol_path,
 			)
@@ -146,41 +156,79 @@ class LayoutLoader(BaseLayoutLoader):
 				footprint.component = component_instances[symbol_path]
 				self.footprints.append(footprint)
 
-	def read_routes(self, route_nodes: Selection):
-		for route_node in route_nodes:
-			id = EntityPathComponent.parse(route_node.uuid[0])
-			net = self.nets[int(route_node.net[0])]
-			layer_name = route_node.layer[0]
+	def read_tracks(self, track_nodes: Selection):
+		for track_node in track_nodes:
+			id = EntityPathComponent.parse(track_node.uuid[0])
+			net = self.nets[int(track_node.net[0])]
+			start = self._vector(track_node.start)
+			end = self._vector(track_node.end)
+			layer_name = track_node.layer[0]
 			layer = self.layers[layer_name]
-			route = Route(
+			position = start
+			track = StraightRoute(
 				id=id,
+				position=position,
+				start=start,
+				end=end,
 				net=net,
 				layer=layer,
 			)
-			self.routes.append(route)
+			self.tracks.append(track)
+
+	def read_track_arcs(self, track_arc_nodes: Selection):
+		for track_arc_node in track_arc_nodes:
+			id = EntityPathComponent.parse(track_arc_node.uuid[0])
+			net = self.nets[int(track_arc_node.net[0])]
+			start = self._vector(track_arc_node.start)
+			mid = self._vector(track_arc_node.mid)
+			end = self._vector(track_arc_node.end)
+			layer_name = track_arc_node.layer[0]
+			layer = self.layers[layer_name]
+			position = start
+			track_arc = ArcRoute(
+				id=id,
+				position=position,
+				start=start,
+				mid=mid,
+				end=end,
+				net=net,
+				layer=layer,
+			)
+			self.track_arcs.append(track_arc)
+
+	def read_track_zones(self, zone_nodes: Selection):
+		for zone_node in zone_nodes:
+			id = EntityPathComponent.parse(zone_node.uuid[0])
+			net = self.nets[int(zone_node.net[0])]
+			points = [
+				self._vector(point_node)
+				for point_node in zone_node.polygon.pts.xy
+			]
+			layer_name = zone_node.layer[0]
+			layer = self.layers[layer_name]
+			position = points[0]
+			zone = PolygonRoute(
+				id=id,
+				position=position,
+				points=points,
+				net=net,
+				layer=layer,
+			)
+			self.zones.append(zone)
 
 	def read_vias(self, via_nodes: Selection):
 		for via_node in via_nodes:
 			id = EntityPathComponent.parse(via_node.uuid[0])
 			net = self.nets[int(via_node.net[0])]
+			position = self._vector(via_node.at)
 			layer1_name = via_node.layers[0]
 			layer2_name = via_node.layers[1]
 			layer1 = self.layers[layer1_name]
 			layer2 = self.layers[layer2_name]
 			via = Via(
 				id=id,
+				position=position,
 				net=net,
 				layers=(layer1, layer2),
 			)
 			self.vias.append(via)
-
-	def read_graphics(self, graphic_nodes: Selection):
-		for graphic_node in graphic_nodes:
-			graphic_id = EntityPathComponent.parse(graphic_node.uuid[0])
-			layer_name = graphic_node.layer[0]
-			layer = self.layers[layer_name]
-			graphic = Graphic(
-				id=graphic_id,
-				layer=layer,
-			)
-			self.graphics.append(graphic)

@@ -1,10 +1,14 @@
-from typing import final, List, Callable
-from abc import ABC, abstractmethod
+from typing import Iterable, Union, final, List, Callable, overload
+from abc import ABC
 from math import copysign
 
 from pcbnew import EDA_ANGLE, DEGREE_T, BOARD_ITEM, FOOTPRINT, VECTOR2I
 
-from ..geometry import Vector2, Angle
+from ..layout_transaction.command import CloneCommand, Command, DisplaceCommand, FlipCommand, MoveToLayerCommand, RotateCommand
+
+from ..kicad_v8_model.angle import Angle
+from ..kicad_v8_model.entities import ArcRoute, Footprint, PolygonRoute, StraightRoute, Via
+
 from ..utils.kicad_units import RotationUnits
 from ..utils.user_exception import UserException
 
@@ -14,32 +18,51 @@ from .placement import Placement
 class CloneTransactionOperator(ABC):
 
 	def __init__(self, source_reference_placement: Placement, target_reference_placement: Placement):
-		self.source_reference_placement: Placement = source_reference_placement
-		self.target_reference_placement: Placement = target_reference_placement
+		self.source_reference_placement = source_reference_placement
+		self.target_reference_placement = target_reference_placement
+		self.rotation = (target_reference_placement.orientation - source_reference_placement.orientation).wrap()
+		self.flip = target_reference_placement.flipped != source_reference_placement.flipped
+		self.displacement = target_reference_placement.position - source_reference_placement.position
 
-	@abstractmethod
-	def apply(self) -> None:
-		pass
+	@overload
+	def apply(self, target_item: Footprint) -> Iterable[Command]:
+		...
 
-	@abstractmethod
-	def revert(self) -> None:
-		pass
+	@overload
+	def apply(self, target_item: StraightRoute) -> Iterable[Command]:
+		...
 
-	def internal_apply_displacement(self, target_item: BOARD_ITEM) -> None:
+	@overload
+	def apply(self, target_item: ArcRoute) -> Iterable[Command]:
+		...
+
+	@overload
+	def apply(self, target_item: PolygonRoute) -> Iterable[Command]:
+		...
+
+	@overload
+	def apply(self, target_item: Via) -> Iterable[Command]:
+		...
+
+	@overload
+	def apply(self, target_item: CloneCommand) -> Iterable[Command]:
+		...
+
+	def apply(self, target_item: Union[Footprint, StraightRoute, ArcRoute, PolygonRoute, Via, CloneCommand]) -> Iterable[Command]:
+		yield MoveToLayerCommand(target=target_item, layer=self.source_reference_placement.layer)
 		# Assumes that target item is at same location/angle/side as source item
-		source_reference_placement = self.source_reference_placement
-		target_reference_placement = self.target_reference_placement
-		rotation = (target_reference_placement.orientation - source_reference_placement.orientation).wrap()
-		flip = target_reference_placement.flipped != source_reference_placement.flipped
-		displacement = target_reference_placement.position - source_reference_placement.position
-		target_item.Move(VECTOR2I(displacement.x, displacement.y))
-		if flip:
-			target_item.Flip(target_reference_placement.position, False)
-			source_angle = source_reference_placement.angle
-			flipped_angle = copysign(180 - abs(source_angle), source_angle)
-			rotation = 180 - flipped_angle - target_reference_placement.angle
-		rotation += target_reference_placement.angle - source_reference_placement.angle
-		target_item.Rotate(target_reference_placement.position, EDA_ANGLE(rotation, DEGREE_T))
+		yield DisplaceCommand(target=target_item, displacement=self.displacement)
+		if self.flip:
+			yield FlipCommand(target=target_item)
+		if isinstance(target_item, Footprint):
+			rotation = self.rotation.degrees
+			if self.flip:
+				source_angle = self.source_reference_placement.orientation.degrees
+				target_angle = self.target_reference_placement.orientation.degrees
+				flipped_angle = copysign(180 - abs(source_angle), source_angle)
+				rotation = 180 - flipped_angle - target_angle
+			rotation += (self.target_reference_placement.orientation - self.source_reference_placement.orientation).degrees
+			yield RotateCommand(target=target_item, rotation=Angle.from_degrees(rotation))
 
 
 @final

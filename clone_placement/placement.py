@@ -1,9 +1,7 @@
 from typing import final
 from dataclasses import dataclass
 
-from ..kicad_v8_model import Footprint
-
-from ..geometry import Vector2, Angle
+from ..kicad_v8_model import Footprint, Vector2, Angle, Layer
 
 
 PlacementEntity = Footprint
@@ -15,6 +13,7 @@ class Placement():
 	position: Vector2
 	orientation: Angle
 	flipped: bool
+	layer: Layer
 
 	@staticmethod
 	def of(item: PlacementEntity) -> "Placement":
@@ -22,7 +21,8 @@ class Placement():
 			return Placement(
 				position=item.position,
 				orientation=item.orientation,
-				flipped=item.flipped,
+				flipped=not item.layer.type.is_front(),
+				layer=item.layer,
 			)
 		else:
 			raise TypeError()

@@ -7,6 +7,7 @@ from .pcb_group import PCB_GROUP
 from .board_item_container import BOARD_ITEM_CONTAINER
 from .board_item import BOARD_ITEM
 from .netinfo import NETINFO_ITEM, NETINFO_LIST
+from .zone import ZONE
 
 
 # TODO
@@ -42,7 +43,7 @@ class BOARD(BOARD_ITEM_CONTAINER):
     def Drawings(self, *args) -> Any:
         ...
 
-    def Zones(self, *args) -> Any:
+    def Zones(self, *args) -> Iterable[ZONE]:
         ...
 
     def Markers(self, *args) -> Any:

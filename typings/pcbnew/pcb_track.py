@@ -1,69 +1,70 @@
 from typing import Any
 
+from pcbnew.vector2i import VECTOR2I
+
 from .board_connected_item import BOARD_CONNECTED_ITEM
 
 
-# TODO
 class PCB_TRACK(BOARD_CONNECTED_ITEM):
 
 	def Mirror(self, aCentre, aMirrorAroundXAxis) -> Any:
 		...
 
-	def SetWidth(self, aWidth) -> Any:
+	def SetWidth(self, aWidth: int):
 		...
 
-	def GetWidth(self) -> Any:
+	def GetWidth(self) -> int:
 		...
 
-	def SetEnd(self, aEnd) -> Any:
+	def SetEnd(self, aEnd: VECTOR2I):
 		...
 
-	def GetEnd(self) -> Any:
+	def GetEnd(self) -> VECTOR2I:
 		...
 
-	def SetStart(self, aStart) -> Any:
+	def SetStart(self, aStart: VECTOR2I):
 		...
 
-	def GetStart(self) -> Any:
+	def GetStart(self) -> VECTOR2I:
 		...
 
-	def SetEndX(self, aX) -> Any:
+	def SetEndX(self, aX: int):
 		...
 
-	def SetEndY(self, aY) -> Any:
+	def SetEndY(self, aY: int):
 		...
 
-	def GetEndX(self) -> Any:
+	def GetEndX(self) -> int:
 		...
 
-	def GetEndY(self) -> Any:
+	def GetEndY(self) -> int:
 		...
 
-	def GetEndPoint(self, aEndPoint) -> Any:
+	def GetEndPoint(self, aEndPoint) -> VECTOR2I:  #: "ENDPOINT_T") -> VECTOR2I:
 		...
 
-	def GetLength(self) -> Any:
+	def GetLength(self) -> float:
 		...
 
 	def TransformShapeToPolygon(self, aBuffer, aLayer, aClearance, aError, aErrorLoc, ignoreLineWidth=False) -> Any:
 		...
 
-	def GetEffectiveShape(self, *args) -> Any:
+	def GetEffectiveShape(self, *args) -> Any:  # "SHAPE":
 		...
 
-	def IsPointOnEnds(self, point, min_dist=0) -> Any:
+	def IsPointOnEnds(self, point, min_dist=0) -> Any:  # "EDA_ITEM_FLAGS":
 		...
 
-	def IsNull(self) -> Any:
+	def IsNull(self) -> bool:
 		...
 
-	def HitTest(self, *args) -> Any:
+	def HitTest(self, *args) -> bool:
 		...
 
-	def ApproxCollinear(self, aTrack) -> Any:
+	def ApproxCollinear(self, aTrack: "PCB_TRACK") -> bool:
 		...
 
-	def GetWidthConstraint(self, aSource) -> Any:
+	def GetWidthConstraint(self, aSource: str) -> Any:
 		...
 
 	def ViewGetLOD(self, aLayer, aView) -> Any:
